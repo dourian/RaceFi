@@ -1,4 +1,4 @@
-import { Link } from "expo-router";
+import { Link, router, useFocusEffect } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   Text,
@@ -15,7 +15,7 @@ import StaticRoutePreview from "../../components/StaticRoutePreview";
 import { useAppTime, getCurrentAppTime } from "../../constants/timeManager";
 import { ApiService } from "../../src/services/apiService";
 import { Challenge } from "../../constants/types";
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 
 type FilterType = 'nearby' | 'all';
 
@@ -27,24 +27,27 @@ export default function BrowseScreen() {
   const [error, setError] = useState<string | null>(null);
   const currentAppTime = useAppTime(); // Use centralized app time that updates when time changes
 
-  // Load challenges from API on component mount
-  useEffect(() => {
-    const loadChallenges = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const challengesData = await ApiService.getChallenges();
-        setChallenges(challengesData);
-      } catch (err) {
-        console.error('Error loading challenges:', err);
-        setError('Failed to load challenges');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadChallenges();
+  // Load challenges function
+  const loadChallenges = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const challengesData = await ApiService.getChallenges();
+      setChallenges(challengesData);
+    } catch (err) {
+      console.error('Error loading challenges:', err);
+      setError('Failed to load challenges');
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  // Load challenges when screen comes into focus (including initial mount)
+  useFocusEffect(
+    useCallback(() => {
+      loadChallenges();
+    }, [loadChallenges])
+  );
 
   // Filter challenges based on current filter
   const filteredChallenges = useMemo(() => {
@@ -151,9 +154,17 @@ export default function BrowseScreen() {
     >
       {/* Header with title and filter buttons */}
       <View style={styles.header}>
-        <Text style={styles.title}>
-          {filter === 'nearby' ? 'Nearby Challenges' : 'All Challenges'}
-        </Text>
+        <View style={styles.titleRow}>
+          <Text style={styles.title}>
+            {filter === 'nearby' ? 'Nearby Challenges' : 'All Challenges'}
+          </Text>
+          <Pressable style={styles.createButton} onPress={() => {
+            router.push('/createChallenge');
+          }}>
+            <Ionicons name="add" size={20} color="white" />
+            <Text style={styles.createButtonText}>Create</Text>
+          </Pressable>
+        </View>
         <View style={styles.filterButtons}>
           <Pressable
             style={[
@@ -433,14 +444,36 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xl,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.sm,
     marginBottom: spacing.lg,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.md,
   },
   title: {
     ...typography.title,
-    marginBottom: spacing.md,
     fontSize: 24,
     fontWeight: "bold",
+    flex: 1,
+  },
+  createButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f97316', // Orange color to match the theme
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: 20,
+    gap: spacing.xs,
+    ...shadows.button,
+  },
+  createButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
   },
   filterButtons: {
     flexDirection: 'row',

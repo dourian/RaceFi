@@ -2,6 +2,22 @@ import { Challenge, Participant } from "../../constants/types";
 import { challenges } from "../../constants";
 import supabase from "../../app/lib/supabase";
 
+export interface ChallengeCreateRequest {
+  name: string;
+  description?: string;
+  distance_km: number;
+  stake: number;
+  elevation: number;
+  difficulty: "Easy" | "Moderate" | "Hard";
+  prize_pool: number;
+  max_participants: number;
+  location: string;
+  start_date: string;
+  end_date: string;
+  created_by_profile_id: number;
+  polyline?: string;
+}
+
 /**
  * API Service Layer
  *
@@ -68,6 +84,74 @@ export class ApiService {
         time: "N/A",
       },
       participantsList: data.participantsList || [],
+    };
+  }
+
+  static async createChallenge(
+    challengeData: ChallengeCreateRequest
+  ): Promise<Challenge> {
+    // Validate dates (basic validation)
+    const startDate = new Date(challengeData.start_date);
+    const endDate = new Date(challengeData.end_date);
+    if (startDate >= endDate) {
+      throw new Error("Start date must be before end date");
+    }
+
+    // Prepare challenge data (exclude polyline for challenges table)
+    const { polyline, ...challengeFields } = challengeData;
+    const challengeInsert = {
+      ...challengeFields,
+      participants_count: 0,
+    };
+
+    // Insert challenge
+    const { data: challengeResult, error: challengeError } = await supabase
+      .from("challenges")
+      .insert(challengeInsert)
+      .select()
+      .single();
+
+    if (challengeError) {
+      if (challengeError.message.includes("duplicate key")) {
+        throw new Error("Challenge with this name already exists");
+      }
+      throw new Error(challengeError.message);
+    }
+
+    if (!challengeResult) {
+      throw new Error("Failed to create challenge");
+    }
+
+    const challengeId = challengeResult.id;
+
+    // Insert track coordinates if provided
+    if (polyline) {
+      const { error: trackError } = await supabase.from("tracks").insert({
+        challenge_id: challengeId,
+        polyline: polyline,
+      });
+
+      if (trackError) {
+        // Could log this error but don't fail the challenge creation
+        console.warn("Failed to save track data:", trackError.message);
+      }
+    }
+
+    // Transform the response to match the Challenge type
+    return {
+      ...challengeResult,
+      startDate: challengeResult.start_date
+        ? new Date(challengeResult.start_date)
+        : new Date(),
+      endDate: challengeResult.end_date
+        ? new Date(challengeResult.end_date)
+        : new Date(),
+      creator: challengeResult.creator || {
+        name: "Challenge Creator",
+        avatar: null,
+        time: "N/A",
+      },
+      participantsList: challengeResult.participantsList || [],
     };
   }
 
