@@ -5,7 +5,6 @@ import { Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { AuthProvider } from "./lib/auth-context";
-import React from "react";
 
 function CustomBackButton() {
   const router = useRouter();
