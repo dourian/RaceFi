@@ -163,7 +163,7 @@ async def floating_line_model_endpoint(request: DimensionRequest):
         scaled_coords = normalize_and_scale(
             coords_np,
             target_size=1.0,
-            z_exaggeration=3000.0,   # Much lower Z exaggeration to make tails longer relative to height
+            z_exaggeration=2000.0,   # Much lower Z exaggeration to make tails longer relative to height
             xy_exaggeration=100000.0
         )
 
