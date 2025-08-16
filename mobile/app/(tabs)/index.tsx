@@ -5,8 +5,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { challenges } from "../lib/mock";
 import { colors, spacing, typography, shadows } from "../theme";
 
-import React from "react";
-
 export default function BrowseScreen() {
   return (
     <SafeAreaView
