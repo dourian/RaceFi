@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   Text,
@@ -12,7 +12,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Link } from "expo-router";
 import { useChallenge } from "../contexts/challengeContext";
-import { challenges } from "../../constants";
+import { ApiService } from "../../src/services/apiService";
+import { Challenge } from "../../constants/types";
 import { colors, spacing, typography, shadows } from "../theme";
 import { Card, CardHeader, CardContent } from "../../components/ui";
 
@@ -21,6 +22,24 @@ const badgeSize = (screenWidth - spacing.xl * 2 - spacing.lg) / 2; // Two badges
 
 export default function TrophiesScreen() {
   const { userChallengeStatuses } = useChallenge();
+  const [challenges, setChallenges] = useState<Challenge[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Load challenges from API
+  useEffect(() => {
+    const loadChallenges = async () => {
+      try {
+        const challengesData = await ApiService.getChallenges();
+        setChallenges(challengesData);
+      } catch (error) {
+        console.error('Error loading challenges:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadChallenges();
+  }, []);
 
   // Get won challenges
   const wonChallenges = userChallengeStatuses

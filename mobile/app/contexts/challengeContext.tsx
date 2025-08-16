@@ -5,6 +5,7 @@ import {
   UserChallengeStatus, 
   ChallengeRunData 
 } from '../../src/services/challengeService';
+import { ApiService } from '../../src/services/apiService';
 import { timeManager } from '../../constants/timeManager';
 
 interface ChallengeContextType {
@@ -105,9 +106,9 @@ export const ChallengeProvider: React.FC<{ children: ReactNode }> = ({ children 
     timeManager.resetToRealTime();
   };
 
-  const simulateCompletedChallengesWithResults = () => {
-    // Import challenge data to get prize pools
-    const { challenges } = require('../lib/mock');
+  const simulateCompletedChallengesWithResults = async () => {
+    // Get challenge data from API to get prize pools
+    const challenges = await ApiService.getChallenges();
     
     // Advance time to simulate that races have been completed
     // This makes it realistic that multiple races have finished
@@ -196,8 +197,8 @@ export const ChallengeProvider: React.FC<{ children: ReactNode }> = ({ children 
     });
   };
 
-  const getUserStats = () => {
-    const { challenges } = require('../lib/mock');
+  const getUserStats = async () => {
+    const challenges = await ApiService.getChallenges();
     // Include both winner and cashOut statuses as wins
     const wonChallenges = userChallengeStatuses.filter(
       status => status.status === 'winner' || status.status === 'cashOut'

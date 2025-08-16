@@ -9,38 +9,79 @@ import {
   Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { challenges } from "../../constants";
 import { colors, spacing, typography, shadows } from "../theme";
 import { useChallenge } from "../contexts/challengeContext";
 import StaticRoutePreview from "../../components/StaticRoutePreview";
 import { useAppTime, getCurrentAppTime } from "../../constants/timeManager";
-import React, { useState, useMemo } from 'react';
+import { ApiService } from "../../src/services/apiService";
+import { Challenge } from "../../constants/types";
+import React, { useState, useMemo, useEffect } from 'react';
 
 type FilterType = 'nearby' | 'all';
 
 export default function BrowseScreen() {
   const { getChallengeStatus } = useChallenge();
   const [filter, setFilter] = useState<FilterType>('nearby');
+  const [challenges, setChallenges] = useState<Challenge[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const currentAppTime = useAppTime(); // Use centralized app time that updates when time changes
+
+  // Load challenges from API on component mount
+  useEffect(() => {
+    const loadChallenges = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const challengesData = await ApiService.getChallenges();
+        setChallenges(challengesData);
+      } catch (err) {
+        console.error('Error loading challenges:', err);
+        setError('Failed to load challenges');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadChallenges();
+  }, []);
 
   // Filter challenges based on current filter
   const filteredChallenges = useMemo(() => {
     if (filter === 'nearby') {
       // Show only active challenges (not expired)
-      return challenges.filter(challenge => challenge.endDate.getTime() > currentAppTime);
+      return challenges.filter(challenge => {
+        try {
+          return challenge.endDate && challenge.endDate.getTime && challenge.endDate.getTime() > currentAppTime;
+        } catch (error) {
+          console.warn('Invalid challenge endDate:', challenge.endDate);
+          return false;
+        }
+      });
     }
     // Show all challenges including expired ones
     return challenges;
-  }, [filter, currentAppTime]);
+  }, [filter, currentAppTime, challenges]);
 
   // Check if a challenge is expired
   const isExpired = (challenge: any) => {
-    return challenge.endDate.getTime() < currentAppTime;
+    try {
+      return challenge.endDate && challenge.endDate.getTime && challenge.endDate.getTime() < currentAppTime;
+    } catch (error) {
+      console.warn('Invalid challenge endDate in isExpired:', challenge.endDate);
+      return false;
+    }
   };
 
   // Get expiry status and text
   const getExpiryInfo = (challenge: any, challengeStatus: any) => {
     const now = currentAppTime;
+    
+    // Safety check for invalid dates
+    if (!challenge.endDate || !challenge.endDate.getTime) {
+      return { text: "Invalid date", color: "#6b7280", urgent: false };
+    }
+    
     const endTime = challenge.endDate.getTime();
     const timeDiff = endTime - now;
     
@@ -154,11 +195,49 @@ export default function BrowseScreen() {
           </Pressable>
         </View>
       </View>
-      <FlatList
-        data={filteredChallenges}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
-        style={styles.list}
+      
+      {/* Loading state */}
+      {loading && (
+        <View style={styles.centerContainer}>
+          <Text style={styles.loadingText}>Loading challenges...</Text>
+        </View>
+      )}
+      
+      {/* Error state */}
+      {error && (
+        <View style={styles.centerContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+          <Pressable 
+            style={styles.retryButton}
+            onPress={() => {
+              const loadChallenges = async () => {
+                try {
+                  setLoading(true);
+                  setError(null);
+                  const challengesData = await ApiService.getChallenges();
+                  setChallenges(challengesData);
+                } catch (err) {
+                  console.error('Error loading challenges:', err);
+                  setError('Failed to load challenges');
+                } finally {
+                  setLoading(false);
+                }
+              };
+              loadChallenges();
+            }}
+          >
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </Pressable>
+        </View>
+      )}
+      
+      {/* Challenges list */}
+      {!loading && !error && (
+        <FlatList
+          data={filteredChallenges}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContent}
+          style={styles.list}
         renderItem={({ item }) => {
           const challengeStatus = getChallengeStatus(item.id);
 
@@ -341,7 +420,8 @@ export default function BrowseScreen() {
             </Link>
           );
         }}
-      />
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -516,5 +596,33 @@ const styles = StyleSheet.create({
     paddingTop: 0,
     paddingBottom: spacing.xl,
     gap: spacing.xl,
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+  },
+  loadingText: {
+    ...typography.body,
+    color: colors.textMuted,
+    textAlign: 'center',
+  },
+  errorText: {
+    ...typography.body,
+    color: '#ef4444', // Red error color
+    textAlign: 'center',
+    marginBottom: spacing.md,
+  },
+  retryButton: {
+    backgroundColor: colors.accentStrong,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    ...typography.body,
+    fontWeight: '600',
+    color: 'white',
   },
 });
