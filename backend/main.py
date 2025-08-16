@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from routes import users, items
+from routes import map
 
 app = FastAPI(
     title="RaceFi API",
@@ -8,8 +8,7 @@ app = FastAPI(
 )
 
 # Include route modules
-app.include_router(users.router)
-app.include_router(items.router)
+app.include_router(map.router)
 
 @app.get("/")
 def read_root():
@@ -21,4 +20,4 @@ def health_check():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8001)
+    uvicorn.run(app, host="127.0.0.1", port=8001)
