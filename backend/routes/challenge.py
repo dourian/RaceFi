@@ -44,7 +44,7 @@ class ChallengeUpdate(BaseModel):
     is_active: Optional[bool] = None
 
 class ChallengeResponse(ChallengeBase):
-    id: str
+    id: int
     participants_count: int
     is_active: bool
     created_at: Optional[Union[datetime, str]] = None
@@ -60,8 +60,8 @@ class ParticipantCreate(BaseModel):
     user_id: Optional[str] = None
 
 class ParticipantResponse(BaseModel):
-    id: str
-    challenge_id: str
+    id: int
+    challenge_id: int
     user_id: Optional[str]
     code_name: str
     avatar_url: Optional[str] = None
@@ -171,7 +171,7 @@ async def get_challenges(
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/{challenge_id}", response_model=ChallengeResponse)
-async def get_challenge(challenge_id: str):
+async def get_challenge(challenge_id: int):
     """Get a specific challenge by ID"""
     try:
         result = supabase.table('challenges').select('*').eq('id', challenge_id).execute()
@@ -187,7 +187,7 @@ async def get_challenge(challenge_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.put("/{challenge_id}", response_model=ChallengeResponse)
-async def update_challenge(challenge_id: str, challenge_update: ChallengeUpdate):
+async def update_challenge(challenge_id: int, challenge_update: ChallengeUpdate):
     """Update a challenge"""
     try:
         # Check if challenge exists
@@ -214,7 +214,7 @@ async def update_challenge(challenge_id: str, challenge_update: ChallengeUpdate)
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.delete("/{challenge_id}")
-async def delete_challenge(challenge_id: str):
+async def delete_challenge(challenge_id: int):
     """Delete a challenge permanently"""
     try:
         # Check if challenge exists
@@ -236,7 +236,7 @@ async def delete_challenge(challenge_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/{challenge_id}/join", response_model=ParticipantResponse)
-async def join_challenge(challenge_id: str, participant: ParticipantCreate):
+async def join_challenge(challenge_id: int, participant: ParticipantCreate):
     """Join a challenge as a participant"""
     try:
         # Check if challenge exists and is active
@@ -274,7 +274,7 @@ async def join_challenge(challenge_id: str, participant: ParticipantCreate):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/{challenge_id}/participants", response_model=List[ParticipantResponse])
-async def get_challenge_participants(challenge_id: str):
+async def get_challenge_participants(challenge_id: int):
     """Get all participants for a specific challenge"""
     try:
         # Check if challenge exists

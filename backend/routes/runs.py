@@ -20,31 +20,37 @@ class RunBase(BaseModel):
     elevation_meters: Optional[int] = None
     avg_pace_min_per_km: Optional[float] = None
     max_speed_kmh: Optional[float] = None
-    gps_track: Optional[dict] = None  # Detailed GPS coordinates with timestamps
+    polyline: Optional[str] = None  # GPS track data as polyline string
     is_valid: Optional[bool] = True  # Whether the run follows the track
     deviation_score: Optional[float] = None  # How much the run deviated from track (0-1)
 
 class RunCreate(RunBase):
-    participant_id: str
-    challenge_id: str
+    participant_id: int
+    challenge_id: int
 
 class RunResponse(RunBase):
-    id: str
-    participant_id: str
-    challenge_id: str
+    id: int
+    participant_id: int
+    challenge_id: int
     created_at: Optional[Union[datetime, str]] = None
 
-@router.post("/{challenge_id}/participants/{participant_id}", response_model=RunResponse)
-async def create_run(challenge_id: str, participant_id: str, run: RunCreate):
-    """Create a new run for a participant"""
+class ChallengeRequest(BaseModel):
+    challenge_id: int
+
+class ParticipantRequest(BaseModel):
+    participant_id: int
+
+@router.post("/", response_model=RunResponse)
+async def create_run(run: RunCreate):
+    """Create a new run"""
     try:
         # Check if challenge exists
-        challenge = supabase.table('challenges').select('*').eq('id', challenge_id).execute()
+        challenge = supabase.table('challenges').select('*').eq('id', run.challenge_id).execute()
         if not challenge.data:
             raise HTTPException(status_code=404, detail="Challenge not found")
         
         # Check if participant exists and is part of this challenge
-        participant = supabase.table('participants').select('*').eq('id', participant_id).eq('challenge_id', challenge_id).execute()
+        participant = supabase.table('participants').select('*').eq('id', run.participant_id).eq('challenge_id', run.challenge_id).execute()
         if not participant.data:
             raise HTTPException(status_code=404, detail="Participant not found")
         
@@ -57,56 +63,43 @@ async def create_run(challenge_id: str, participant_id: str, run: RunCreate):
         
         return RunResponse(**result.data[0])
         
-    except HTTPException:
-        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/{challenge_id}/participants/{participant_id}", response_model=List[RunResponse])
-async def get_participant_runs(challenge_id: str, participant_id: str):
-    """Get all runs for a specific participant in a challenge"""
+@router.get("/participant/{participant_id}", response_model=List[RunResponse])
+async def get_participant_runs(request: ParticipantRequest):
+    """Get all runs for a specific participant"""
     try:
-        # Check if challenge exists
-        challenge = supabase.table('challenges').select('*').eq('id', challenge_id).execute()
-        if not challenge.data:
-            raise HTTPException(status_code=404, detail="Challenge not found")
-        
-        # Check if participant exists and is part of this challenge
-        participant = supabase.table('participants').select('*').eq('id', participant_id).eq('challenge_id', challenge_id).execute()
+        # Check if participant exists
+        participant = supabase.table('participants').select('*').eq('id', request.participant_id).execute()
         if not participant.data:
             raise HTTPException(status_code=404, detail="Participant not found")
         
         # Get runs
-        result = supabase.table('runs').select('*').eq('challenge_id', challenge_id).eq('participant_id', participant_id).execute()
+        result = supabase.table('runs').select('*').eq('participant_id', request.participant_id).execute()
         
         if not result.data:
             return []
         
         return [RunResponse(**run) for run in result.data]
-        
-    except HTTPException:
-        raise
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/{challenge_id}", response_model=List[RunResponse])
-async def get_challenge_runs(challenge_id: str):
+@router.get("/challenge", response_model=List[RunResponse])
+async def get_challenge_runs(request: ChallengeRequest):
     """Get all runs for a specific challenge"""
     try:
-        # Check if challenge exists
-        challenge = supabase.table('challenges').select('*').eq('id', challenge_id).execute()
+        challenge = supabase.table('challenges').select('*').eq('id', request.challenge_id).execute()
         if not challenge.data:
             raise HTTPException(status_code=404, detail="Challenge not found")
         
-        # Get all runs for the challenge
-        result = supabase.table('runs').select('*').eq('challenge_id', challenge_id).execute()
+        result = supabase.table('runs').select('*').eq('challenge_id', request.challenge_id).execute()
         
         if not result.data:
             return []
         
         return [RunResponse(**run) for run in result.data]
-        
-    except HTTPException:
-        raise
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) 
+        raise HTTPException(status_code=500, detail=str(e))

@@ -21,8 +21,8 @@ class ParticipantCreate(ParticipantBase):
     user_id: Optional[str] = None
 
 class ParticipantResponse(ParticipantBase):
-    id: str
-    challenge_id: str
+    id: int
+    challenge_id: int
     user_id: Optional[str]
     status: str = Field(..., pattern="^(joined|running|completed)$")
     start_time: Optional[Union[datetime, str]] = None
@@ -46,8 +46,8 @@ class ParticipantUpdate(BaseModel):
 
 @router.put("/{challenge_id}/{participant_id}", response_model=ParticipantResponse)
 async def update_participant(
-    challenge_id: str, 
-    participant_id: str, 
+    challenge_id: int, 
+    participant_id: int, 
     participant_update: ParticipantUpdate
 ):
     """Update a participant's information (e.g., status, run data)"""

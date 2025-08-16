@@ -16,13 +16,13 @@ class TrackData(BaseModel):
     polyline: str = Field(..., description="Track data as a polyline string (encoded coordinates)")
 
 class TrackResponse(BaseModel):
-    id: str
-    challenge_id: str
+    id: int
+    challenge_id: int
     polyline: str  # Track data as a polyline string
     created_at: Optional[Union[datetime, str]] = None
 
 @router.get("/{challenge_id}")
-async def get_challenge_track(challenge_id: str):
+async def get_challenge_track(challenge_id: int):
     """Get the track polyline for a challenge"""
     try:
         # Check if challenge exists
@@ -44,7 +44,7 @@ async def get_challenge_track(challenge_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/{challenge_id}")
-async def update_challenge_track(challenge_id: str, track: TrackData):
+async def update_challenge_track(challenge_id: int, track: TrackData):
     """Update or create track polyline for a challenge"""
     try:
         # Check if challenge exists
