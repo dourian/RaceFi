@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import * as Location from 'expo-location';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Text, StyleSheet, Button, View } from 'react-native';
+import { Text, StyleSheet, Pressable, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { colors, spacing, typography, shadows } from './theme';
 
 export default function RecordRun() {
   const [permission, setPermission] = useState<'granted' | 'denied' | 'undetermined'>('undetermined');
@@ -45,20 +47,43 @@ export default function RecordRun() {
   return (
     <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
       <Text style={styles.title}>Record Run</Text>
-      <Text>Permission: {permission}</Text>
-      <Text>Time: {elapsedSec}s</Text>
-      <Text>Points: {coords.length}</Text>
-      <View style={{ flexDirection: 'row', gap: 12, marginTop: 12 }}>
-        <Button title="Start" onPress={start} disabled={watching || permission !== 'granted'} />
-        <Button title="Stop" onPress={stop} disabled={!watching} />
+      <View style={styles.statRow}>
+        <Text style={styles.statLabel}>Permission</Text>
+        <Text style={styles.statValue}>{permission}</Text>
       </View>
-      <Text style={{ marginTop: 12, color: '#555' }}>GPS points are collected every ~5m/1s and stored in memory.</Text>
+      <View style={styles.statRow}>
+        <Text style={styles.statLabel}>Time</Text>
+        <Text style={styles.statValue}>{elapsedSec}s</Text>
+      </View>
+      <View style={styles.statRow}>
+        <Text style={styles.statLabel}>Points</Text>
+        <Text style={styles.statValue}>{coords.length}</Text>
+      </View>
+      <View style={{ flexDirection: 'row', gap: spacing.md, marginTop: spacing.md }}>
+        <Pressable style={({ pressed }) => [styles.primaryButton, pressed && { opacity: 0.9 }]} onPress={start} disabled={watching || permission !== 'granted'}>
+          <Ionicons name="play" size={18} color={colors.accentStrong} style={{ marginRight: 8 }} />
+          <Text style={styles.primaryButtonText}>Start</Text>
+        </Pressable>
+        <Pressable style={({ pressed }) => [styles.secondaryButton, pressed && { opacity: 0.9 }]} onPress={stop} disabled={!watching}>
+          <Ionicons name="stop" size={18} color={colors.accent} style={{ marginRight: 8 }} />
+          <Text style={styles.secondaryButtonText}>Stop</Text>
+        </Pressable>
+      </View>
+      <Text style={styles.helpText}>GPS points are collected every ~5m/1s and stored in memory.</Text>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16 },
-  title: { fontSize: 22, fontWeight: '600', marginBottom: 8 },
+  container: { flex: 1, padding: spacing.lg, backgroundColor: colors.background },
+  title: { ...typography.title, marginBottom: spacing.sm },
+  statRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#e6e6ea' },
+  statLabel: { ...typography.meta },
+  statValue: { ...typography.body },
+  primaryButton: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.lg, paddingVertical: spacing.md, backgroundColor: colors.surface, borderRadius: 10, borderWidth: 2, borderColor: colors.accentStrong, ...shadows.button },
+  primaryButtonText: { color: colors.accentStrong, fontWeight: '700' },
+  secondaryButton: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.lg, paddingVertical: spacing.md, backgroundColor: colors.surface, borderRadius: 10, borderWidth: StyleSheet.hairlineWidth, borderColor: '#e6e6ea' },
+  secondaryButtonText: { color: colors.accent, fontWeight: '700' },
+  helpText: { marginTop: spacing.md, color: colors.textMuted },
 });
 
