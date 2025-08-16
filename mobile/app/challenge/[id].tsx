@@ -29,12 +29,13 @@ import { ChallengeService } from "../../src/services/challengeService";
 import { RunCalculationService } from "../../src/services/runCalculationService";
 import LeaderboardService from "../../src/services/leaderboardService";
 import StaticRoutePreview from "../../components/StaticRoutePreview";
+import { useAppTime, getCurrentAppTime } from "../../constants/timeManager";
 
 export default function ChallengeDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const challenge = challenges.find((c) => c.id === id);
   const { getChallengeStatus, joinChallenge, startChallengeRun, cashOutWinnings } = useChallenge();
-  const [timeLeft, setTimeLeft] = useState(5 * 24 * 60 * 60 * 1000); // 5 days in milliseconds
+  const currentAppTime = useAppTime(); // Use centralized app time that updates when time changes
 
   const challengeStatus = getChallengeStatus(id || '');
   const isJoined = challengeStatus.status !== 'not-joined';
@@ -43,19 +44,104 @@ export default function ChallengeDetail() {
   const isCashedOut = challengeStatus.status === 'cashOut';
   const isInProgress = challengeStatus.status === 'in-progress';
 
-  // Countdown timer effect
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => Math.max(0, prev - 1000));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
+  // Calculate actual time remaining using challenge end date and current app time
+  const getTimeRemaining = () => {
+    if (!challenge) return { timeLeft: 0, isExpired: true, progressValue: 0 };
+    
+    const now = currentAppTime;
+    const endTime = challenge.endDate.getTime();
+    const startTime = challenge.startDate.getTime();
+    const timeLeft = Math.max(0, endTime - now);
+    const isExpired = endTime < now;
+    
+    // Calculate progress as percentage of time elapsed
+    const totalDuration = endTime - startTime;
+    const elapsed = now - startTime;
+    const progressValue = Math.min(100, Math.max(0, (elapsed / totalDuration) * 100));
+    
+    return { timeLeft, isExpired, progressValue };
+  };
 
   const formatTime = (ms: number) => {
     const days = Math.floor(ms / (1000 * 60 * 60 * 24));
     const hours = Math.floor((ms % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
-    return `${days}d ${hours}h ${minutes}m`;
+    const seconds = Math.floor((ms % (1000 * 60)) / 1000);
+    
+    if (days > 0) {
+      return `${days}d ${hours}h ${minutes}m`;
+    } else if (hours > 0) {
+      return `${hours}h ${minutes}m ${seconds}s`;
+    } else if (minutes > 0) {
+      return `${minutes}m ${seconds}s`;
+    } else {
+      return `${seconds}s`;
+    }
+  };
+  
+  // Get expiry status and text using same logic as home screen
+  const getExpiryInfo = (challenge: any, challengeStatus: any) => {
+    const now = currentAppTime;
+    const endTime = challenge.endDate.getTime();
+    const timeDiff = endTime - now;
+    
+    // If user has completed the challenge (won, completed, or cashed out), show completed status
+    if (challengeStatus.status === 'winner') {
+      return { text: "Challenge won!", color: "#DAA520", urgent: false };
+    } else if (challengeStatus.status === 'cashOut') {
+      return { text: "Winnings cashed out", color: "#22c55e", urgent: false };
+    } else if (challengeStatus.status === 'completed') {
+      return { text: "Challenge completed", color: "#22c55e", urgent: false };
+    } else if (challengeStatus.status === 'in-progress') {
+      return { text: "Currently running", color: "#f59e0b", urgent: false };
+    }
+    
+    // For non-participated or joined challenges, show time-based info
+    if (timeDiff < 0) {
+      return { text: "Expired", color: "#6b7280", urgent: false };
+    }
+    
+    const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((timeDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
+    
+    // Running window is the last 7 days before deadline
+    const isInRunningWindow = days <= 7;
+    
+    if (days > 7) {
+      // Still in sign-up only period
+      const runningStartDays = days - 7;
+      return { 
+        text: `Running starts in ${runningStartDays} days`, 
+        color: "#6b7280", 
+        urgent: false 
+      };
+    } else if (days > 1) {
+      // In running window
+      return { 
+        text: `${days} days to run`, 
+        color: "#22c55e", 
+        urgent: false 
+      };
+    } else if (days === 1) {
+      return { 
+        text: `Final day to run`, 
+        color: "#f59e0b", 
+        urgent: true 
+      };
+    } else if (hours > 1) {
+      return { 
+        text: `${hours}h to run`, 
+        color: "#ef4444", 
+        urgent: true 
+      };
+    } else {
+      return { 
+        text: `${minutes}m to run`, 
+        color: "#ef4444", 
+        urgent: true 
+      };
+    }
   };
 
   const handleJoinChallenge = () => {
@@ -382,23 +468,39 @@ export default function ChallengeDetail() {
           )}
 
           {/* Countdown Timer - Only show for non-completed challenges */}
-          {!isCompleted && !isWinner && !isCashedOut && (
-            <Card style={styles.cardSpacing}>
-              <CardHeader
-                title="Time Remaining"
-                icon={<Ionicons name="time" size={18} color={colors.text} />}
-              />
-              <CardContent>
-                <View style={styles.timerContent}>
-                  <Text style={styles.timeDisplay}>{formatTime(timeLeft)}</Text>
-                  <Progress value={70} style={styles.progressBar} />
-                  <Text style={styles.endDate}>
-                    Challenge ends {challenge.endDate.toLocaleDateString()}
-                  </Text>
-                </View>
-              </CardContent>
-            </Card>
-          )}
+          {!isCompleted && !isWinner && !isCashedOut && (() => {
+            const { timeLeft, isExpired, progressValue } = getTimeRemaining();
+            const expiryInfo = getExpiryInfo(challenge, challengeStatus);
+            
+            return (
+              <Card style={styles.cardSpacing}>
+                <CardHeader
+                  title="Time Remaining"
+                  icon={<Ionicons name="time" size={18} color={expiryInfo.color} />}
+                />
+                <CardContent>
+                  <View style={styles.timerContent}>
+                    {isExpired ? (
+                      <Text style={[styles.timeDisplay, { color: expiryInfo.color }]}>
+                        {expiryInfo.text}
+                      </Text>
+                    ) : (
+                      <Text style={[styles.timeDisplay, { color: expiryInfo.color }]}>
+                        {formatTime(timeLeft)}
+                      </Text>
+                    )}
+                    <Progress value={progressValue} style={styles.progressBar} />
+                    <Text style={styles.endDate}>
+                      Challenge ends {challenge.endDate.toLocaleDateString()}
+                    </Text>
+                    <Text style={[styles.expiryStatus, { color: expiryInfo.color }]}>
+                      {expiryInfo.text}
+                    </Text>
+                  </View>
+                </CardContent>
+              </Card>
+            );
+          })()}
 
           {/* Enhanced Participants List / Leaderboard */}
           <Card style={styles.cardSpacing}>
@@ -677,6 +779,13 @@ const styles = StyleSheet.create({
   },
   endDate: {
     ...typography.meta,
+    marginBottom: spacing.xs,
+  },
+  expiryStatus: {
+    ...typography.meta,
+    textAlign: "center",
+    fontWeight: "500",
+    fontSize: 14,
   },
   creatorRow: {
     flexDirection: "row",
