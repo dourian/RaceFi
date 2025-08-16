@@ -1,7 +1,7 @@
-import { Tabs } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { colors } from '../theme';
-import { AuthWrapper } from '../auth/auth-wrapper';
+import React from "react";
+import { Tabs } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { AuthWrapper } from "../auth/auth-wrapper";
 
 export default function TabsLayout() {
   return (
@@ -24,7 +24,11 @@ export default function TabsLayout() {
           options={{
             title: "Browse",
             tabBarIcon: ({ color, size }) => (
-              <Ionicons name="compass-outline" size={size ?? 22} color={color} />
+              <Ionicons
+                name="compass-outline"
+                size={size ?? 22}
+                color={color}
+              />
             ),
           }}
         />
@@ -33,7 +37,11 @@ export default function TabsLayout() {
           options={{
             title: "Upload",
             tabBarIcon: ({ color, size }) => (
-              <Ionicons name="cloud-upload-outline" size={size ?? 22} color={color} />
+              <Ionicons
+                name="cloud-upload-outline"
+                size={size ?? 22}
+                color={color}
+              />
             ),
           }}
         />

@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
-import { View, Text, StyleSheet, Image, ViewStyle, TextStyle } from "react-native";
+import { View, Text, StyleSheet, Image, ViewStyle } from "react-native";
 import { colors, spacing, typography, shadows } from "../app/theme";
+import React from "react";
 
 export function Card({
   children,
@@ -49,25 +50,25 @@ export function Avatar({ source, size = 32 }: { source: any; size?: number }) {
   );
 }
 
-export function Badge({ 
-  children, 
-  variant = "default", 
-  style 
-}: { 
-  children: ReactNode; 
+export function Badge({
+  children,
+  variant = "default",
+  style,
+}: {
+  children: ReactNode;
   variant?: "default" | "secondary" | "outline";
   style?: ViewStyle;
 }) {
-  const badgeStyle = variant === "default" 
-    ? styles.badgeDefault 
-    : variant === "secondary" 
-    ? styles.badgeSecondary 
-    : styles.badgeOutline;
-  
-  const textStyle = variant === "outline" 
-    ? styles.badgeTextOutline 
-    : styles.badgeText;
-    
+  const badgeStyle =
+    variant === "default"
+      ? styles.badgeDefault
+      : variant === "secondary"
+        ? styles.badgeSecondary
+        : styles.badgeOutline;
+
+  const textStyle =
+    variant === "outline" ? styles.badgeTextOutline : styles.badgeText;
+
   return (
     <View style={[badgeStyle, style]}>
       <Text style={textStyle}>{children}</Text>
@@ -75,11 +76,11 @@ export function Badge({
   );
 }
 
-export function Progress({ 
-  value, 
-  style 
-}: { 
-  value: number; 
+export function Progress({
+  value,
+  style,
+}: {
+  value: number;
   style?: ViewStyle;
 }) {
   return (
@@ -115,44 +116,44 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   badgeSecondary: {
-    backgroundColor: colors.backgroundMuted,
+    backgroundColor: colors.background,
     borderRadius: 12,
     paddingHorizontal: spacing.sm,
     paddingVertical: 4,
   },
   badgeOutline: {
-    backgroundColor: 'transparent',
+    backgroundColor: "transparent",
     borderWidth: 1,
-    borderColor: colors.backgroundMuted,
+    borderColor: colors.background,
     borderRadius: 12,
     paddingHorizontal: spacing.sm,
     paddingVertical: 4,
   },
   badgeText: {
-    color: 'white',
+    color: "white",
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   badgeTextOutline: {
     color: colors.text,
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   progressContainer: {
     height: 8,
-    backgroundColor: colors.backgroundMuted,
+    backgroundColor: colors.background,
     borderRadius: 4,
-    overflow: 'hidden',
+    overflow: "hidden",
     borderWidth: 1,
-    borderColor: colors.text + '20', // 20% opacity
+    borderColor: colors.text + "20", // 20% opacity
   },
   progressBar: {
-    height: '100%',
+    height: "100%",
     backgroundColor: colors.accentStrong,
   },
   separator: {
     height: 1,
-    backgroundColor: colors.backgroundMuted,
+    backgroundColor: colors.background,
     marginVertical: spacing.sm,
   },
 });

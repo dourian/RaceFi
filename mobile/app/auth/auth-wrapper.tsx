@@ -4,7 +4,7 @@ import { useAuth } from '../lib/auth-context';
 import { SignIn } from './sign-in';
 import { SignUp } from './sign-up';
 
-export const AuthWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+const AuthWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, loading } = useAuth();
   const [showSignUp, setShowSignUp] = useState(false);
 
@@ -62,4 +62,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textDecorationLine: 'underline',
   },
-}); 
+});
+
+export { AuthWrapper };
+export default AuthWrapper;

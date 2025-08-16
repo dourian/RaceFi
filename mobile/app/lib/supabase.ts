@@ -50,3 +50,5 @@ export const getSession = async () => {
   } = await supabase.auth.getSession();
   return session;
 };
+
+export default supabase;

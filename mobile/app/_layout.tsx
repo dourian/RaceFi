@@ -5,10 +5,11 @@ import { Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { AuthProvider } from "./lib/auth-context";
+import React from "react";
 
 function CustomBackButton() {
   const router = useRouter();
-  
+
   return (
     <Pressable
       onPress={() => router.back()}
@@ -31,28 +32,31 @@ export default function RootLayout() {
         screenOptions={{
           headerStyle: { backgroundColor: "#e64a00" },
           headerTintColor: "white",
-          headerTitleStyle: { ...typography.title, fontSize: 18, color: "white" },
+          headerTitleStyle: {
+            ...typography.title,
+            fontSize: 18,
+            color: "white",
+          },
           contentStyle: { backgroundColor: colors.background },
           headerBackTitle: "",
-          headerBackTitleVisible: false,
         }}
       >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen 
-          name="challenge/[id]" 
-          options={{ 
+        <Stack.Screen
+          name="challenge/[id]"
+          options={{
             title: "Challenge",
             headerLeft: () => <CustomBackButton />,
             headerBackVisible: false,
-          }} 
+          }}
         />
-        <Stack.Screen 
-          name="record" 
-          options={{ 
+        <Stack.Screen
+          name="record"
+          options={{
             title: "Record Run",
             headerLeft: () => <CustomBackButton />,
             headerBackVisible: false,
-          }} 
+          }}
         />
       </Stack>
     </AuthProvider>

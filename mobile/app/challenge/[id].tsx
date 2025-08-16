@@ -1,6 +1,14 @@
 import { Link, useLocalSearchParams, router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Text, StyleSheet, Pressable, View, ScrollView, Image, Dimensions } from "react-native";
+import {
+  Text,
+  StyleSheet,
+  Pressable,
+  View,
+  ScrollView,
+  Image,
+  Dimensions,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { challenges } from "../lib/mock";
 import { colors, spacing, typography, shadows, borderRadius } from "../theme";
@@ -14,7 +22,7 @@ import {
   Progress,
   Separator,
 } from "../../components/ui";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 
 export default function ChallengeDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -64,7 +72,7 @@ export default function ChallengeDetail() {
 
         {/* Runner Image */}
         <View style={styles.imageContainer}>
-          <Image 
+          <Image
             source={require("../../assets/rwcover.webp")}
             style={styles.runnerImage}
             resizeMode="cover"
@@ -127,7 +135,8 @@ export default function ChallengeDetail() {
                   </Text>
                 </Pressable>
                 <Text style={styles.stakeDisclaimer}>
-                  Winner takes all! Complete the challenge with the best time to win the entire prize pool.
+                  Winner takes all! Complete the challenge with the best time to
+                  win the entire prize pool.
                 </Text>
               </CardContent>
             </Card>
@@ -211,10 +220,13 @@ export default function ChallengeDetail() {
                       {participant.name}
                     </Text>
                     <Text style={styles.participantStatus}>
-                      {participant.status === "completed" && participant.time ? `Finished • ${participant.time}` :
-                       participant.status === "running" && participant.time ? `Running • ${participant.time}` :
-                       participant.status === "joined" ? "Joined" :
-                       participant.status || "No status"}
+                      {participant.status === "completed" && participant.time
+                        ? `Finished • ${participant.time}`
+                        : participant.status === "running" && participant.time
+                          ? `Running • ${participant.time}`
+                          : participant.status === "joined"
+                            ? "Joined"
+                            : participant.status || "No status"}
                     </Text>
                   </View>
                   <Badge
@@ -231,9 +243,9 @@ export default function ChallengeDetail() {
                         ? "Done"
                         : participant.status === "running"
                           ? "Running"
-                        : participant.status === "joined"
-                          ? "Joined"
-                          : participant.status || "Status"}
+                          : participant.status === "joined"
+                            ? "Joined"
+                            : participant.status || "Status"}
                     </Text>
                   </Badge>
                 </View>
@@ -287,12 +299,12 @@ const styles = StyleSheet.create({
   },
   imageContainer: {
     height: 200,
-    width: Dimensions.get('window').width,
-    alignSelf: 'center',
+    width: Dimensions.get("window").width,
+    alignSelf: "center",
   },
   runnerImage: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
   },
   mainContent: {
     padding: spacing.lg,

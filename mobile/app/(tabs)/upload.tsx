@@ -2,6 +2,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Text, StyleSheet, Pressable, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, spacing, typography, shadows } from "../theme";
+import React from "react";
 
 export default function UploadScreen() {
   return (

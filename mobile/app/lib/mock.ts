@@ -111,3 +111,5 @@ export const challenges: Challenge[] = [
     ],
   },
 ];
+
+export default challenges;

@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { useAuth } from '../lib/auth-context';
 import { colors, shadows } from '../theme';
 
-export const Profile: React.FC = () => {
+const Profile: React.FC = () => {
   const { user, signOut } = useAuth();
 
   const handleSignOut = async () => {
@@ -103,4 +103,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-}); 
+});
+
+export { Profile };
+export default Profile;

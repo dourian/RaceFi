@@ -5,9 +5,14 @@ import { Ionicons } from "@expo/vector-icons";
 import { challenges } from "../lib/mock";
 import { colors, spacing, typography, shadows } from "../theme";
 
+import React from "react";
+
 export default function BrowseScreen() {
   return (
-    <SafeAreaView style={styles.container} edges={["top", "left", "right", "bottom"]}>
+    <SafeAreaView
+      style={styles.container}
+      edges={["top", "left", "right", "bottom"]}
+    >
       <Text style={styles.title}>Nearby Challenges</Text>
       <FlatList
         data={challenges}
