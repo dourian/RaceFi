@@ -3,11 +3,12 @@ import MapView from 'react-native-maps';
 import { StyleSheet, View, TouchableOpacity, Text } from 'react-native';
 import { useLocation } from '../app/contexts/locationContext';
 
-export default function Map({ showsUserLocation, followsUserLocation, initialPosition, alterMapEnabled }: { 
+export default function Map({ showsUserLocation, followsUserLocation, initialPosition, initialZoom = 0.01, alterMapEnabled }: { 
     showsUserLocation?: boolean, 
     followsUserLocation?: boolean, 
     initialPosition?: { latitude: number, longitude: number },
     alterMapEnabled?: boolean,
+    initialZoom?: number,
 }) {
     const [isGuest, setIsGuest] = useState(false);
     const { currentLocation, getCurrentLocation, locationPermission } = useLocation();
@@ -15,8 +16,8 @@ export default function Map({ showsUserLocation, followsUserLocation, initialPos
     const initialRegion = {
         latitude: initialPosition ? initialPosition.latitude : currentLocation?.latitude,
         longitude: initialPosition ? initialPosition.longitude : currentLocation?.longitude,
-        latitudeDelta: 0.05,
-        longitudeDelta: 0.05,
+        latitudeDelta: initialZoom,
+        longitudeDelta: initialZoom,
     };
 
     useEffect(() => {

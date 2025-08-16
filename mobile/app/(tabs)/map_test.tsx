@@ -30,7 +30,7 @@ export default function MapTest() {
   return (
     <View style={styles.container}>
       <View style={styles.mapContainer}>
-        <Map showsUserLocation={true} followsUserLocation={true} alterMapEnabled={false} />
+        <Map showsUserLocation={true} followsUserLocation={true} alterMapEnabled={true} />
       </View>
     </View>
   );
