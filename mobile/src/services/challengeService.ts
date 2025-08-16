@@ -1,6 +1,7 @@
 import { RunCalculationService } from './runCalculationService';
 import { timeManager } from '../../constants/timeManager';
 import { Challenge } from '../../constants/types';
+import { UserBalanceService } from './userBalanceService';
 
 export interface ChallengeRunData {
   coords: { latitude: number; longitude: number; timestamp: number }[];
@@ -208,7 +209,7 @@ export class ChallengeService {
    * @param existingStatus Current challenge status
    * @param prizePoolAmount Prize pool amount in USDC
    * @param challenge Challenge object to check expiration
-   * @returns Updated status as winner
+   * @returns Updated status as winner with winnings automatically added to balance
    */
   static simulateWinner(
     existingStatus: UserChallengeStatus,
@@ -224,11 +225,19 @@ export class ChallengeService {
       throw new Error('Winner cannot be determined until the race is expired');
     }
 
+    // Automatically add winnings to balance
+    UserBalanceService.addWinnings(
+      challenge.id,
+      challenge.name,
+      prizePoolAmount
+    );
+
     return {
       ...existingStatus,
-      status: 'winner',
+      status: 'cashOut', // Directly to cashOut since winnings are already in balance
       isWinner: true,
       winnerRewards: prizePoolAmount,
+      cashedOutAt: new Date(),
     };
   }
 
@@ -289,16 +298,16 @@ export class ChallengeService {
     return status.isWinner === true || status.status === 'winner';
   }
 
-  /**
-   * Cash out winnings from a completed challenge
+/**
+   * Add winning rewards to balance (previously direct cashout)
    * @param existingStatus Current challenge status
-   * @returns Updated status as cashed out
+   * @returns Updated status with winnings recorded
    */
-  static cashOut(
+  static addWinningsToBalance(
     existingStatus: UserChallengeStatus
   ): UserChallengeStatus {
     if (existingStatus.status !== 'winner') {
-      throw new Error('Can only cash out from winner status');
+      throw new Error('Can only add winnings from winner status');
     }
 
     return {
@@ -306,6 +315,17 @@ export class ChallengeService {
       status: 'cashOut',
       cashedOutAt: new Date(),
     };
+  }
+  
+  /**
+   * Legacy cashout method (kept for backward compatibility)
+   * @param existingStatus Current challenge status
+   * @returns Updated status as cashed out
+   */
+  static cashOut(
+    existingStatus: UserChallengeStatus
+  ): UserChallengeStatus {
+    return this.addWinningsToBalance(existingStatus);
   }
 
   /**

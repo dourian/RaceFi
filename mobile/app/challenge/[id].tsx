@@ -168,7 +168,19 @@ export default function ChallengeDetail() {
     }
   };
 
+  // Check if challenge is expired
+  const isExpired = challenge ? challenge.endDate.getTime() < currentAppTime : false;
+
   const handleJoinChallenge = () => {
+    if (isExpired) {
+      Alert.alert(
+        "Challenge Expired",
+        "This challenge has ended and no longer accepts new participants.",
+        [{ text: "OK" }]
+      );
+      return;
+    }
+    
     if (id) {
       joinChallenge(id);
     }
@@ -322,36 +334,57 @@ export default function ChallengeDetail() {
 
           {/* Challenge Status Card */}
           {!isJoined ? (
-            <Card style={{ ...styles.cardSpacing, ...styles.joinCard }}>
-              <CardHeader title="Join Challenge" />
-              <CardContent>
-                <View style={styles.stakeInfo}>
-                  <Text style={styles.stakeAmount}>{challenge.stake} USDC</Text>
-                  <Text style={styles.stakeLabel}>Stake to join</Text>
-                </View>
-                <Pressable
-                  onPress={handleJoinChallenge}
-                  style={styles.joinButton}
-                >
-                  <Text style={styles.joinButtonText}>
-                    Stake & Join Challenge
+            isExpired ? (
+              <Card style={{ ...styles.cardSpacing, ...styles.expiredCard }}>
+                <CardHeader 
+                  title="Challenge Expired" 
+                  icon={<Ionicons name="time" size={18} color="#6b7280" />}
+                />
+                <CardContent>
+                  <Text style={styles.expiredText}>
+                    This challenge has ended and no longer accepts new participants.
                   </Text>
-                </Pressable>
-                <Text style={styles.stakeDisclaimer}>
-                  Winner takes all! Complete the challenge with the best time to
-                  win the entire prize pool.
-                </Text>
-              </CardContent>
-            </Card>
+                  <View style={styles.expiredStakeInfo}>
+                    <Text style={styles.expiredStakeAmount}>{challenge.stake} USDC</Text>
+                    <Text style={styles.expiredStakeLabel}>Entry fee (no longer available)</Text>
+                  </View>
+                  <Text style={styles.expiredNote}>
+                    Check out our other upcoming challenges to join the action!
+                  </Text>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card style={{ ...styles.cardSpacing, ...styles.joinCard }}>
+                <CardHeader title="Join Challenge" />
+                <CardContent>
+                  <View style={styles.stakeInfo}>
+                    <Text style={styles.stakeAmount}>{challenge.stake} USDC</Text>
+                    <Text style={styles.stakeLabel}>Stake to join</Text>
+                  </View>
+                  <Pressable
+                    onPress={handleJoinChallenge}
+                    style={styles.joinButton}
+                  >
+                    <Text style={styles.joinButtonText}>
+                      Stake & Join Challenge
+                    </Text>
+                  </Pressable>
+                  <Text style={styles.stakeDisclaimer}>
+                    Winner takes all! Complete the challenge with the best time to
+                    win the entire prize pool.
+                  </Text>
+                </CardContent>
+              </Card>
+            )
           ) : isCashedOut ? (
             <Card style={{ ...styles.cardSpacing, ...styles.cashedOutCard }}>
               <CardHeader
-                title="💰 Winnings Cashed Out"
+                title="💰 Added to Balance"
                 icon={<Ionicons name="wallet" size={18} color="#10b981" />}
               />
               <CardContent>
                 <Text style={styles.cashedOutText}>
-                  ✅ You've successfully cashed out your {challengeStatus.winnerRewards} USDC winnings!
+                  ✅ Your {challengeStatus.winnerRewards} USDC winnings have been added to your balance!
                 </Text>
                 {challengeStatus.runData && (
                   <View style={styles.resultStats}>
@@ -376,7 +409,7 @@ export default function ChallengeDetail() {
                   </View>
                 )}
                 <Text style={styles.cashedOutNote}>
-                  Funds have been transferred to your wallet. Thanks for participating! 💚
+                  Visit your profile to cash out all your earnings. Thanks for participating! 💚
                 </Text>
 
                 {challengeStatus.cashedOutAt && (
@@ -419,33 +452,8 @@ export default function ChallengeDetail() {
                   </View>
                 )}
                 <Text style={styles.winnerNote}>
-                  Your reward has been added to your account! 🎊
+                  Your {challengeStatus.winnerRewards} USDC has been automatically added to your wallet balance! Visit your profile to cash out all your earnings. 🎊
                 </Text>
-
-                <Pressable 
-                  style={styles.cashOutButton} 
-                  onPress={() => {
-                    Alert.alert(
-                      'Cash Out',
-                      `Ready to cash out your ${challengeStatus.winnerRewards} USDC winnings?`,
-                      [
-                        { text: 'Cancel', style: 'cancel' },
-                        { 
-                          text: 'Cash Out', 
-                          onPress: () => {
-                            if (id) {
-                              cashOutWinnings(id);
-                              Alert.alert('Success', 'Cashout initiated! Funds will be transferred to your wallet.');
-                            }
-                          }
-                        }
-                      ]
-                    );
-                  }}
-                >
-                  <Ionicons name="wallet" size={16} color="white" style={{ marginRight: 8 }} />
-                  <Text style={styles.cashOutButtonText}>Cash Out {challengeStatus.winnerRewards} USDC</Text>
-                </Pressable>
               </CardContent>
             </Card>
           ) : isCompleted ? (
@@ -992,6 +1000,56 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 16,
     fontWeight: "bold",
+  },
+  addToBalanceButton: {
+    backgroundColor: "#DAA520",
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderRadius: borderRadius.lg,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: spacing.sm,
+  },
+  addToBalanceButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  // Expired challenge card
+  expiredCard: {
+    borderColor: "#6b7280",
+    borderWidth: 1,
+    backgroundColor: "rgba(107, 114, 128, 0.05)",
+  },
+  expiredText: {
+    ...typography.body,
+    marginBottom: spacing.lg,
+    color: "#6b7280",
+    fontWeight: "500",
+    textAlign: "center",
+  },
+  expiredStakeInfo: {
+    alignItems: "center",
+    marginBottom: spacing.lg,
+    opacity: 0.7,
+  },
+  expiredStakeAmount: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#6b7280",
+    textDecorationLine: "line-through",
+  },
+  expiredStakeLabel: {
+    ...typography.meta,
+    color: "#9ca3af",
+    fontStyle: "italic",
+  },
+  expiredNote: {
+    ...typography.meta,
+    textAlign: "center",
+    color: "#6b7280",
+    fontStyle: "italic",
   },
   // Cashed out challenge card
   cashedOutCard: {

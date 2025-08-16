@@ -17,11 +17,11 @@ import { ApiService } from "../../src/services/apiService";
 import { Challenge } from "../../constants/types";
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 
-type FilterType = 'nearby' | 'all';
+type FilterType = 'upcoming' | 'passed';
 
 export default function BrowseScreen() {
   const { getChallengeStatus } = useChallenge();
-  const [filter, setFilter] = useState<FilterType>('nearby');
+  const [filter, setFilter] = useState<FilterType>('upcoming');
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -51,8 +51,8 @@ export default function BrowseScreen() {
 
   // Filter challenges based on current filter
   const filteredChallenges = useMemo(() => {
-    if (filter === 'nearby') {
-      // Show only active challenges (not expired)
+    if (filter === 'upcoming') {
+      // Show only upcoming challenges (not expired)
       return challenges.filter(challenge => {
         try {
           return challenge.endDate && challenge.endDate.getTime && challenge.endDate.getTime() > currentAppTime;
@@ -62,8 +62,15 @@ export default function BrowseScreen() {
         }
       });
     }
-    // Show all challenges including expired ones
-    return challenges;
+    // Show only passed challenges (expired)
+    return challenges.filter(challenge => {
+      try {
+        return challenge.endDate && challenge.endDate.getTime && challenge.endDate.getTime() <= currentAppTime;
+      } catch (error) {
+        console.warn('Invalid challenge endDate:', challenge.endDate);
+        return false;
+      }
+    });
   }, [filter, currentAppTime, challenges]);
 
   // Check if a challenge is expired
@@ -92,7 +99,7 @@ export default function BrowseScreen() {
     if (challengeStatus.status === 'winner') {
       return { text: "Challenge won!", color: "#DAA520", urgent: false };
     } else if (challengeStatus.status === 'cashOut') {
-      return { text: "Winnings cashed out", color: "#22c55e", urgent: false };
+      return { text: "Winnings added to balance", color: "#22c55e", urgent: false };
     } else if (challengeStatus.status === 'completed') {
       return { text: "Challenge completed", color: "#22c55e", urgent: false };
     } else if (challengeStatus.status === 'in-progress') {
@@ -156,7 +163,7 @@ export default function BrowseScreen() {
       <View style={styles.header}>
         <View style={styles.titleRow}>
           <Text style={styles.title}>
-            {filter === 'nearby' ? 'Nearby Challenges' : 'All Challenges'}
+            {filter === 'upcoming' ? 'Upcoming Challenges' : 'Passed Challenges'}
           </Text>
           <Pressable style={styles.createButton} onPress={() => {
             router.push('/createChallenge');
@@ -169,39 +176,39 @@ export default function BrowseScreen() {
           <Pressable
             style={[
               styles.filterButton,
-              filter === 'nearby' && styles.filterButtonActive
+              filter === 'upcoming' && styles.filterButtonActive
             ]}
-            onPress={() => setFilter('nearby')}
+            onPress={() => setFilter('upcoming')}
           >
             <Ionicons 
-              name="location" 
+              name="time-outline" 
               size={16} 
-              color={filter === 'nearby' ? 'white' : '#374151'} 
+              color={filter === 'upcoming' ? 'white' : '#374151'} 
             />
             <Text style={[
               styles.filterButtonText,
-              filter === 'nearby' && styles.filterButtonTextActive
+              filter === 'upcoming' && styles.filterButtonTextActive
             ]}>
-              Nearby
+              Upcoming
             </Text>
           </Pressable>
           <Pressable
             style={[
               styles.filterButton,
-              filter === 'all' && styles.filterButtonActive
+              filter === 'passed' && styles.filterButtonActive
             ]}
-            onPress={() => setFilter('all')}
+            onPress={() => setFilter('passed')}
           >
             <Ionicons 
-              name="list" 
+              name="checkmark-done" 
               size={16} 
-              color={filter === 'all' ? 'white' : '#374151'} 
+              color={filter === 'passed' ? 'white' : '#374151'} 
             />
             <Text style={[
               styles.filterButtonText,
-              filter === 'all' && styles.filterButtonTextActive
+              filter === 'passed' && styles.filterButtonTextActive
             ]}>
-              View All
+              Passed
             </Text>
           </Pressable>
         </View>
@@ -265,8 +272,8 @@ export default function BrowseScreen() {
                 };
               case "cashOut":
                 return {
-                  text: "💰 Cashed Out",
-                  icon: "card",
+                  text: "💰 Added to Balance",
+                  icon: "wallet",
                   backgroundColor: "rgba(34, 197, 94, 0.15)",
                   color: "#22c55e",
                 };

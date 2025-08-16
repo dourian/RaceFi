@@ -205,8 +205,11 @@ export const baseChallenges = [
 ];
 
 // Combine base challenges with participants and creators
+// IMPORTANT: Calculate prize pool dynamically based on stake × participants
 export const challenges: Challenge[] = baseChallenges.map(baseChallenge => ({
   ...baseChallenge,
+  // Dynamic prize pool calculation: stake × participants
+  prizePool: baseChallenge.stake * baseChallenge.participants,
   creator: mockCreators[baseChallenge.id],
   participantsList: mockParticipants[baseChallenge.id] || [],
 }));

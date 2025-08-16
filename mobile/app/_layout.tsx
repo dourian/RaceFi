@@ -7,6 +7,7 @@ import { useRouter } from "expo-router";
 import { AuthProvider } from "./lib/auth-context";
 import { LocationProvider } from "./contexts/locationContext";
 import { ChallengeProvider } from "./contexts/challengeContext";
+import { BalanceProvider } from "./contexts/balanceContext";
 
 function CustomBackButton() {
   const router = useRouter();
@@ -29,9 +30,10 @@ export default function RootLayout() {
   return (
     <AuthProvider>
       <LocationProvider>
-        <ChallengeProvider>
-          <StatusBar style="dark" backgroundColor={colors.background} />
-          <Stack
+        <BalanceProvider>
+          <ChallengeProvider>
+            <StatusBar style="dark" backgroundColor={colors.background} />
+            <Stack
             screenOptions={{
               headerStyle: { backgroundColor: "#e64a00" },
               headerTintColor: "white",
@@ -59,8 +61,9 @@ export default function RootLayout() {
                 headerShown: false,
               }}
             />
-          </Stack>
-        </ChallengeProvider>
+            </Stack>
+          </ChallengeProvider>
+        </BalanceProvider>
       </LocationProvider>
     </AuthProvider>
   );

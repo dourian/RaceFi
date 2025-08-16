@@ -1,12 +1,16 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../lib/auth-context';
 import { useChallenge } from '../contexts/challengeContext';
-import { colors, shadows } from '../theme';
+import { useBalance } from '../contexts/balanceContext';
+import { colors, shadows, spacing } from '../theme';
+import WalletBalance from '../../components/WalletBalance';
 
 const Profile: React.FC = () => {
   const { user, signOut } = useAuth();
   const { resetAllChallenges, simulateCompletedChallengesWithResults } = useChallenge();
+  const { resetBalance } = useBalance();
 
   const handleSignOut = async () => {
     Alert.alert(
@@ -39,7 +43,8 @@ const Profile: React.FC = () => {
           style: 'destructive',
           onPress: () => {
             resetAllChallenges();
-            Alert.alert('Success', 'All challenge statuses have been reset');
+            resetBalance();
+            Alert.alert('Success', 'All challenge statuses and balance have been reset');
           },
         },
       ]
@@ -64,49 +69,67 @@ const Profile: React.FC = () => {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Profile</Text>
-        <Text style={styles.subtitle}>Welcome back!</Text>
-      </View>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Profile</Text>
+          <Text style={styles.subtitle}>Manage your account and earnings</Text>
+        </View>
 
-      <View style={styles.userInfo}>
-        <Text style={styles.label}>Email</Text>
-        <Text style={styles.value}>{user?.email}</Text>
+        {/* Wallet Balance */}
+        <WalletBalance style={styles.walletBalance} />
+
+        {/* User Info */}
+        <View style={styles.userInfo}>
+          <Text style={styles.label}>Email</Text>
+          <Text style={styles.value}>{user?.email}</Text>
+          
+          <Text style={styles.label}>User ID</Text>
+          <Text style={styles.value}>{user?.id}</Text>
+          
+          <Text style={styles.label}>Joined</Text>
+          <Text style={styles.value}>
+            {user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}
+          </Text>
+        </View>
+
+        {/* Testing Controls */}
+        <View style={styles.testingSection}>
+          <Text style={styles.testingTitle}>Testing Controls</Text>
+          
+          <TouchableOpacity style={styles.simulateButton} onPress={handleSimulateCompletedChallenges}>
+            <Text style={styles.simulateButtonText}>Simulate Completed Races</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.resetButton} onPress={handleResetChallenges}>
+            <Text style={styles.resetButtonText}>Reset All Data</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Sign Out */}
+        <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
+          <Text style={styles.signOutText}>Sign Out</Text>
+        </TouchableOpacity>
         
-        <Text style={styles.label}>User ID</Text>
-        <Text style={styles.value}>{user?.id}</Text>
-        
-        <Text style={styles.label}>Joined</Text>
-        <Text style={styles.value}>
-          {user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}
-        </Text>
-      </View>
-
-      <TouchableOpacity style={styles.simulateButton} onPress={handleSimulateCompletedChallenges}>
-        <Text style={styles.simulateButtonText}>Simulate Completed Races (Testing)</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity style={styles.resetButton} onPress={handleResetChallenges}>
-        <Text style={styles.resetButtonText}>Reset All Challenges (Testing)</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
-        <Text style={styles.signOutText}>Sign Out</Text>
-      </TouchableOpacity>
-    </View>
+        <View style={styles.bottomPadding} />
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
     backgroundColor: colors.background,
+  },
+  scrollView: {
+    flex: 1,
+    paddingHorizontal: spacing.lg,
   },
   header: {
     alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: spacing.xl,
+    paddingTop: spacing.md,
   },
   title: {
     fontSize: 28,
@@ -118,11 +141,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.textMuted,
   },
+  walletBalance: {
+    marginBottom: spacing.lg,
+  },
   userInfo: {
     backgroundColor: colors.surface,
-    padding: 20,
+    padding: spacing.lg,
     borderRadius: 12,
-    marginBottom: 30,
+    marginBottom: spacing.xl,
     ...shadows.card,
   },
   label: {
@@ -136,6 +162,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.text,
     marginBottom: 10,
+  },
+  testingSection: {
+    marginBottom: spacing.xl,
+  },
+  testingTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: spacing.md,
   },
   simulateButton: {
     backgroundColor: '#28a745',
@@ -166,11 +201,15 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 8,
     alignItems: 'center',
+    marginBottom: spacing.lg,
   },
   signOutText: {
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
+  },
+  bottomPadding: {
+    height: spacing.xl,
   },
 });
 
