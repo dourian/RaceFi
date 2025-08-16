@@ -13,17 +13,17 @@ supabase: Client = create_client(
 router = APIRouter(prefix="/tracks", tags=["tracks"])
 
 class TrackData(BaseModel):
-    track_data: str = Field(..., description="Track data as a string (e.g., GPX, GeoJSON, or custom format)")
+    polyline: str = Field(..., description="Track data as a polyline string (encoded coordinates)")
 
 class TrackResponse(BaseModel):
     id: str
     challenge_id: str
-    track_data: str  # Track data as a string
+    polyline: str  # Track data as a polyline string
     created_at: Optional[Union[datetime, str]] = None
 
 @router.get("/{challenge_id}")
 async def get_challenge_track(challenge_id: str):
-    """Get the track data for a challenge"""
+    """Get the track polyline for a challenge"""
     try:
         # Check if challenge exists
         challenge = supabase.table('challenges').select('*').eq('id', challenge_id).execute()
@@ -34,9 +34,9 @@ async def get_challenge_track(challenge_id: str):
         result = supabase.table('tracks').select('*').eq('challenge_id', challenge_id).execute()
         
         if not result.data:
-            return {"track_data": ""}
+            return {"polyline": ""}
         
-        return {"track_data": result.data[0]['track_data']}
+        return {"polyline": result.data[0]['polyline']}
         
     except HTTPException:
         raise
@@ -45,7 +45,7 @@ async def get_challenge_track(challenge_id: str):
 
 @router.post("/{challenge_id}")
 async def update_challenge_track(challenge_id: str, track: TrackData):
-    """Update or create track data for a challenge"""
+    """Update or create track polyline for a challenge"""
     try:
         # Check if challenge exists
         challenge = supabase.table('challenges').select('*').eq('id', challenge_id).execute()
@@ -57,19 +57,19 @@ async def update_challenge_track(challenge_id: str, track: TrackData):
         
         if existing_track.data:
             # Update existing track
-            result = supabase.table('tracks').update({'track_data': track.track_data}).eq('challenge_id', challenge_id).execute()
+            result = supabase.table('tracks').update({'polyline': track.polyline}).eq('challenge_id', challenge_id).execute()
         else:
             # Create new track
             track_data = {
                 'challenge_id': challenge_id,
-                'track_data': track.track_data
+                'polyline': track.polyline
             }
             result = supabase.table('tracks').insert(track_data).execute()
         
         if not result.data:
             raise HTTPException(status_code=500, detail="Failed to update track")
         
-        return {"message": "Track updated successfully", "track_data": track.track_data}
+        return {"message": "Track updated successfully", "polyline": track.polyline}
         
     except HTTPException:
         raise
