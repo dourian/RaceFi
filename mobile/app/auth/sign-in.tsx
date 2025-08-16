@@ -6,7 +6,7 @@ const SignIn: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const { signIn } = useAuth();
+  const { signIn, continueAsGuest } = useAuth();
 
   const handleSignIn = async () => {
     if (!email || !password) {
@@ -60,6 +60,13 @@ const SignIn: React.FC = () => {
           {loading ? 'Signing In...' : 'Sign In'}
         </Text>
       </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[styles.guestButton]}
+        onPress={continueAsGuest}
+      >
+        <Text style={styles.guestButtonText}>Continue as Guest</Text>
+      </TouchableOpacity>
     </View>
   );
 };
@@ -104,6 +111,20 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  guestButton: {
+    backgroundColor: 'transparent',
+    padding: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#fc5200',
+    marginTop: 15,
+  },
+  guestButtonText: {
+    color: '#fc5200',
     fontSize: 16,
     fontWeight: '600',
   },
