@@ -1,48 +1,82 @@
 import { useEffect, useState } from 'react';
-import MapView, { Polyline } from 'react-native-maps';
+import MapView, { Polyline, Marker } from 'react-native-maps';
 import { StyleSheet, View, TouchableOpacity, Text } from 'react-native';
 import { useLocation } from '../app/contexts/locationContext';
+import { Ionicons } from '@expo/vector-icons';
+import theme from '../app/theme';
 
-export default function Map({ showsUserLocation, followsUserLocation, initialZoom = 0.01, alterMapEnabled, polylineCoordinates, routeColor = '#e64a00' }: { 
+export default function Map({ showsUserLocation, followsUserLocation, initialZoom = 0.01, alterMapEnabled, staticPolyline, movingPolyline, routeColor = '#e64a00', arrowMarkers }: { 
     showsUserLocation?: boolean, 
     followsUserLocation?: boolean, 
     alterMapEnabled?: boolean,
     initialZoom?: number,
-    polylineCoordinates?: Array<{ latitude: number, longitude: number }>,
+    staticPolyline?: Array<{ latitude: number, longitude: number }>,
+    movingPolyline?: Array<{ latitude: number, longitude: number }>,
     routeColor?: string,
+    arrowMarkers?: Array<{ coordinate: { latitude: number, longitude: number }, bearing: number }>,
 }) {
     const [isGuest, setIsGuest] = useState(false);
     const { currentLocation, getCurrentLocation, locationPermission } = useLocation();
     const [mapRef, setMapRef] = useState<MapView | null>(null);
 
-    const getInitialRegion = () => {
-        if (polylineCoordinates && polylineCoordinates.length > 0) {
-            const lats = polylineCoordinates.map(coord => coord.latitude);
-            const lngs = polylineCoordinates.map(coord => coord.longitude);
+    const getInitialRegionForRoute = () => {
+        if (staticPolyline && staticPolyline.length > 0) {
+            const lats = staticPolyline.map(coord => coord.latitude);
+            const lngs = staticPolyline.map(coord => coord.longitude);
             const minLat = Math.min(...lats);
             const maxLat = Math.max(...lats);
             const minLng = Math.min(...lngs);
             const maxLng = Math.max(...lngs);
-            
+
             const centerLat = (minLat + maxLat) / 2;
             const centerLng = (minLng + maxLng) / 2;
-            const deltaLat = (maxLat - minLat) * 1.2; 
+            const deltaLat = (maxLat - minLat) * 1.2;
             const deltaLng = (maxLng - minLng) * 1.2;
-            
+
             return {
                 latitude: centerLat,
                 longitude: centerLng,
-                latitudeDelta: Math.max(deltaLat, 0.01), 
-                longitudeDelta: Math.max(deltaLng, 0.01),
+                latitudeDelta: Math.max(deltaLat),
+                longitudeDelta: Math.max(deltaLng),
             };
         }
-        
+        return undefined;
+    };
+
+    const getInitialRegionForUser = () => {
         return {
             latitude: currentLocation?.latitude || 37.78825,
             longitude: currentLocation?.longitude || -122.4324,
             latitudeDelta: initialZoom,
             longitudeDelta: initialZoom,
         };
+    };
+
+    const getInitialRegion = () => {
+        // If following the user, initialize around the user's current location
+        if (followsUserLocation) {
+            return getInitialRegionForUser();
+        }
+
+        // Otherwise, if there is a static route, initialize around the route
+        const routeRegion = getInitialRegionForRoute();
+        if (routeRegion) {
+            return routeRegion;
+        }
+
+        // When recording without a static route, use the latest moving polyline point if available
+        if (movingPolyline && movingPolyline.length > 0) {
+            const last = movingPolyline[movingPolyline.length - 1];
+            return {
+                latitude: last.latitude,
+                longitude: last.longitude,
+                latitudeDelta: initialZoom,
+                longitudeDelta: initialZoom,
+            };
+        }
+
+        // Fallback to user location or default
+        return getInitialRegionForUser();
     };
 
     const initialRegion = getInitialRegion();
@@ -53,6 +87,21 @@ export default function Map({ showsUserLocation, followsUserLocation, initialZoo
         };
         getLocation();
     }, []);
+
+    // When follow is toggled on (or user location updates while following), animate to user immediately
+    useEffect(() => {
+        if (followsUserLocation && mapRef && currentLocation) {
+            const targetRegion = getInitialRegionForUser();
+            // Animate quickly to give instant feedback
+            // Small timeout ensures mapRef is ready after any re-render
+            const id = setTimeout(() => {
+                try {
+                    mapRef.animateToRegion(targetRegion, 400);
+                } catch {}
+            }, 0);
+            return () => clearTimeout(id);
+        }
+    }, [followsUserLocation, currentLocation, mapRef]);
 
     if (!isGuest && locationPermission !== 'granted') {
         return (
@@ -69,7 +118,6 @@ export default function Map({ showsUserLocation, followsUserLocation, initialZoo
 
     return (
         <View style={styles.container}>
-            {(currentLocation || polylineCoordinates) && (
             <MapView
                 ref={setMapRef}
                 style={styles.map}
@@ -82,10 +130,45 @@ export default function Map({ showsUserLocation, followsUserLocation, initialZoo
                 scrollEnabled={alterMapEnabled}
                 pitchEnabled={alterMapEnabled}
             >
-                {/* Render polyline if coordinates are provided */}
-                {polylineCoordinates && polylineCoordinates.length > 1 && (
+                {staticPolyline && staticPolyline.length > 1 && (
                     <Polyline
-                        coordinates={polylineCoordinates}
+                        coordinates={staticPolyline}
+                        strokeColor={routeColor}
+                        strokeWidth={4}
+                        lineJoin="round"
+                        lineCap="round"
+                    />
+                )}
+                {staticPolyline && arrowMarkers && arrowMarkers.map((m, idx) => (
+                    <Marker
+                        key={`static-arrow-${idx}`}
+                        coordinate={m.coordinate}
+                        anchor={{ x: 0.5, y: 0.5 }}
+                        flat
+                        rotation={(m.bearing - 90 + 360) % 360}
+                    >
+                        <View style={{ transform: [{ rotate: `${(m.bearing - 90 + 360) % 360}deg` }] }}>
+                            <Ionicons name="caret-forward-outline" size={14} color={routeColor}/>
+                        </View>
+                    </Marker>
+                ))}
+                {staticPolyline && staticPolyline.length > 1 && (
+                    <>
+                        <Marker
+                            coordinate={staticPolyline[0]}
+                            pinColor="green"
+                            tracksViewChanges={false}
+                        />
+                        <Marker
+                            coordinate={staticPolyline[staticPolyline.length - 1]}
+                            pinColor={theme.colors.accent}
+                            tracksViewChanges={false}
+                        />
+                    </>
+                )}
+                {movingPolyline && movingPolyline.length > 1 && (
+                    <Polyline
+                        coordinates={movingPolyline}
                         strokeColor={routeColor}
                         strokeWidth={4}
                         lineJoin="round"
@@ -93,7 +176,6 @@ export default function Map({ showsUserLocation, followsUserLocation, initialZoo
                     />
                 )}
             </MapView>
-            )}
         </View>
     );
 }

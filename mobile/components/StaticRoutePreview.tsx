@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import Map from './map';
-import { decodePolyline } from '../src/helpers/polyline';
+import { decodePolyline, buildArrowMarkers } from '../src/helpers/polyline';
 
 interface StaticRoutePreviewProps {
   challengeId: string;
@@ -31,7 +31,7 @@ export default function StaticRoutePreview({
           showsUserLocation={false} 
           followsUserLocation={false} 
           alterMapEnabled={false} 
-          polylineCoordinates={polylineCoordinates}
+          staticPolyline={polylineCoordinates}
           routeColor={routeColor}
         />
       )}
