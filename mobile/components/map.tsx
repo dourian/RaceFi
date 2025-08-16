@@ -1,24 +1,50 @@
 import { useEffect, useState } from 'react';
-import MapView from 'react-native-maps';
+import MapView, { Polyline } from 'react-native-maps';
 import { StyleSheet, View, TouchableOpacity, Text } from 'react-native';
 import { useLocation } from '../app/contexts/locationContext';
 
-export default function Map({ showsUserLocation, followsUserLocation, initialPosition, initialZoom = 0.01, alterMapEnabled }: { 
+export default function Map({ showsUserLocation, followsUserLocation, initialZoom = 0.01, alterMapEnabled, polylineCoordinates }: { 
     showsUserLocation?: boolean, 
     followsUserLocation?: boolean, 
-    initialPosition?: { latitude: number, longitude: number },
     alterMapEnabled?: boolean,
     initialZoom?: number,
+    polylineCoordinates?: Array<{ latitude: number, longitude: number }>,
 }) {
     const [isGuest, setIsGuest] = useState(false);
     const { currentLocation, getCurrentLocation, locationPermission } = useLocation();
+    const [mapRef, setMapRef] = useState<MapView | null>(null);
 
-    const initialRegion = {
-        latitude: initialPosition ? initialPosition.latitude : currentLocation?.latitude,
-        longitude: initialPosition ? initialPosition.longitude : currentLocation?.longitude,
-        latitudeDelta: initialZoom,
-        longitudeDelta: initialZoom,
+    const getInitialRegion = () => {
+        if (polylineCoordinates && polylineCoordinates.length > 0) {
+            const lats = polylineCoordinates.map(coord => coord.latitude);
+            const lngs = polylineCoordinates.map(coord => coord.longitude);
+            const minLat = Math.min(...lats);
+            const maxLat = Math.max(...lats);
+            const minLng = Math.min(...lngs);
+            const maxLng = Math.max(...lngs);
+            
+            const centerLat = (minLat + maxLat) / 2;
+            const centerLng = (minLng + maxLng) / 2;
+            const deltaLat = (maxLat - minLat) * 1.2; 
+            const deltaLng = (maxLng - minLng) * 1.2;
+            
+            return {
+                latitude: centerLat,
+                longitude: centerLng,
+                latitudeDelta: Math.max(deltaLat, 0.01), 
+                longitudeDelta: Math.max(deltaLng, 0.01),
+            };
+        }
+        
+        return {
+            latitude: currentLocation?.latitude || 37.78825,
+            longitude: currentLocation?.longitude || -122.4324,
+            latitudeDelta: initialZoom,
+            longitudeDelta: initialZoom,
+        };
     };
+
+    const initialRegion = getInitialRegion();
 
     useEffect(() => {
         const getLocation = async () => {
@@ -42,18 +68,30 @@ export default function Map({ showsUserLocation, followsUserLocation, initialPos
 
     return (
         <View style={styles.container}>
-            {currentLocation && (
+            {(currentLocation || polylineCoordinates) && (
             <MapView
+                ref={setMapRef}
                 style={styles.map}
                 initialRegion={initialRegion}
                 showsUserLocation={showsUserLocation}
                 showsMyLocationButton={showsUserLocation}
-                rotateEnabled={alterMapEnabled}
+                rotateEnabled={alterMapEnabled} 
                 zoomEnabled={alterMapEnabled}
                 followsUserLocation={followsUserLocation}
                 scrollEnabled={alterMapEnabled}
                 pitchEnabled={alterMapEnabled}
-            />
+            >
+                {/* Render polyline if coordinates are provided */}
+                {polylineCoordinates && polylineCoordinates.length > 1 && (
+                    <Polyline
+                        coordinates={polylineCoordinates}
+                        strokeColor="#e64a00" // Orange color for the route
+                        strokeWidth={4}
+                        lineJoin="round"
+                        lineCap="round"
+                    />
+                )}
+            </MapView>
             )}
         </View>
     );
