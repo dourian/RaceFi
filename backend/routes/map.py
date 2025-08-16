@@ -10,16 +10,20 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Initialize Strava client
 client = Client()
 
-# Pydantic model for compare request
 class CompareRequest(BaseModel):
     activity_id1: int = None
     activity_id2: int = None
-    polyline1: str = None  # Encoded polyline string
-    polyline2: str = None  # Encoded polyline string
-    threshold_ratio: float = 0.02  # Optional, defaults to 0.02
+    polyline1: str = None
+    polyline2: str = None
+    threshold_ratio: float = 0.02
+
+class AuthRequest(BaseModel):
+    code: str
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
 
 router = APIRouter(prefix="/maps", tags=["maps"])
 
@@ -37,8 +41,8 @@ async def authorize_strava():
     )
     return {"authorization_url": url}
 
-@router.get("/authorization")
-async def handle_authorization(code: str, state: str = None):
+@router.post("/authorization")
+async def handle_authorization(request: AuthRequest):
     """Handle Strava OAuth callback and exchange code for token"""
     client_id = os.getenv("STRAVA_CLIENT_ID")
     client_secret = os.getenv("STRAVA_CLIENT_SECRET")
@@ -50,27 +54,23 @@ async def handle_authorization(code: str, state: str = None):
         token_response = client.exchange_code_for_token(
             client_id=client_id,
             client_secret=client_secret,
-            code=code
+            code=request.code
         )
         
-        # Store tokens (in production, use a database)
         access_token = token_response["access_token"]
         refresh_token = token_response["refresh_token"]
         
-        # Set the access token for future API calls
         client.access_token = access_token
         
         return {
             "message": "Authorization successful!",
-            "access_token": access_token[:10] + "...",  # Only show first 10 chars for security
-            "refresh_token": refresh_token[:10] + "..."
         }
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Token exchange failed: {str(e)}")
 
 @router.post("/refresh-token")
-async def refresh_access_token(refresh_token: str):
+async def refresh_access_token(request: RefreshTokenRequest):
     """Refresh expired access token using refresh token"""
     client_id = os.getenv("STRAVA_CLIENT_ID")
     client_secret = os.getenv("STRAVA_CLIENT_SECRET")
@@ -82,19 +82,16 @@ async def refresh_access_token(refresh_token: str):
         token_response = client.refresh_access_token(
             client_id=client_id,
             client_secret=client_secret,
-            refresh_token=refresh_token,
+            refresh_token=request.refresh_token,
         )
         
         new_access_token = token_response["access_token"]
         new_refresh_token = token_response["refresh_token"]
         
-        # Update the client with new access token
         client.access_token = new_access_token
         
         return {
             "message": "Token refreshed successfully!",
-            "access_token": new_access_token[:10] + "...",
-            "refresh_token": new_refresh_token[:10] + "..."
         }
         
     except Exception as e:
@@ -136,13 +133,11 @@ async def get_map_strava(activity_id: int):
 @router.post("/compare", response_model=bool)
 async def compare_map(request: CompareRequest):
     """Compare two Strava activity polylines or direct polylines by shape similarity"""
-    # Check if we need Strava authorization
     if request.activity_id1 is not None and request.activity_id2 is not None:
         if not client.access_token:
             raise HTTPException(status_code=401, detail="Not authorized. Please complete OAuth flow first.")
     
     try:
-        # Handle both Strava activity IDs and direct polyline input
         if request.activity_id1 is not None and request.activity_id2 is not None:
             activity1 = client.get_activity(request.activity_id1)
             activity2 = client.get_activity(request.activity_id2)
