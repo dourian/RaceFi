@@ -64,13 +64,86 @@ def normalize_and_scale(coords, target_size=1.0, z_exaggeration=10.0, xy_exagger
     coords[:, 2] = z
     return coords
 
-def create_point_cloud_glb(coords):
-    """Create a simple point cloud GLB from 3D coordinates"""
+def create_point_cloud_glb(coords, density_factor=3000, tail_points=20, tail_length=0.5):
+    """Create a dense point cloud GLB with interpolated points and vertical tails"""
     coords = np.array(coords, dtype=np.float32)
     if coords.shape[0] < 2:
         raise ValueError("Need at least 2 points to create a point cloud")
-
-    mesh = trimesh.points.PointCloud(coords)
+    
+    # Interpolate points to create a much denser point cloud
+    dense_coords = []
+    for i in range(len(coords) - 1):
+        p1 = coords[i]
+        p2 = coords[i + 1]
+        
+        # Add the first point
+        dense_coords.append(p1)
+        
+        # Add very long vertical tail going straight down from this point
+        for j in range(1, tail_points + 1):
+            # Create points with same X,Y but dramatically decreasing Z
+            tail_point = p1.copy()
+            # Use exponential decrease to make tail points more visible near the start
+            decrease_factor = (j / tail_points) ** 0.7  # Less than 1 power makes more points near the start
+            tail_point[2] -= decrease_factor * tail_length
+            dense_coords.append(tail_point)
+            
+            # Add many more points around each tail point to make it more visible
+            offset = tail_length * 0.001  # Small offset
+            
+            # Create a denser pattern of points around each tail point
+            for dx in [-offset*2, -offset, 0, offset, offset*2]:
+                for dy in [-offset*2, -offset, 0, offset, offset*2]:
+                    # Skip the center point (already added)
+                    if dx == 0 and dy == 0:
+                        continue
+                    
+                    extra_point = tail_point.copy()
+                    extra_point[0] += dx
+                    extra_point[1] += dy
+                    dense_coords.append(extra_point)
+        
+        # Add many interpolated points between p1 and p2
+        for j in range(1, density_factor):
+            t = j / density_factor
+            interp_point = p1 * (1 - t) + p2 * t
+            dense_coords.append(interp_point)
+    
+    # Add the last point
+    if len(coords) > 0:
+        last_point = coords[-1]
+        dense_coords.append(last_point)
+        
+        # Add very long vertical tail for the last point
+        for j in range(1, tail_points + 1):
+            # Create points with same X,Y but dramatically decreasing Z
+            tail_point = last_point.copy()
+            # Use exponential decrease to make tail points more visible near the start
+            decrease_factor = (j / tail_points) ** 0.7  # Less than 1 power makes more points near the start
+            tail_point[2] -= decrease_factor * tail_length
+            dense_coords.append(tail_point)
+            
+            # Add many more points around each tail point to make it more visible
+            offset = tail_length * 0.001  # Small offset
+            
+            # Create a denser pattern of points around each tail point
+            for dx in [-offset*2, -offset, 0, offset, offset*2]:
+                for dy in [-offset*2, -offset, 0, offset, offset*2]:
+                    # Skip the center point (already added)
+                    if dx == 0 and dy == 0:
+                        continue
+                    
+                    extra_point = tail_point.copy()
+                    extra_point[0] += dx
+                    extra_point[1] += dy
+                    dense_coords.append(extra_point)
+    
+    # Convert to numpy array
+    dense_coords = np.array(dense_coords, dtype=np.float32)
+    print(f"Original points: {len(coords)}, Dense points with tails: {len(dense_coords)}")
+    
+    # Create a point cloud mesh with the dense points including tails
+    mesh = trimesh.points.PointCloud(dense_coords)
     glb_data = mesh.export(file_type='glb')
     return glb_data
 
@@ -88,12 +161,17 @@ async def floating_line_model_endpoint(request: DimensionRequest):
         scaled_coords = normalize_and_scale(
             coords_np,
             target_size=1.0,
-            z_exaggeration=1000.0,  # Extreme Z exaggeration (same as XY)
+            z_exaggeration=3000.0,  # Extreme Z exaggeration (same as XY)
             xy_exaggeration=100000.0
         )
 
-        # Generate point cloud GLB
-        glb_data = create_point_cloud_glb(scaled_coords)
+        # Generate point cloud GLB with ultra-dense tails
+        glb_data = create_point_cloud_glb(
+            scaled_coords, 
+            density_factor=20,     # Moderate density between points
+            tail_points=300,       # 300 points per tail for extremely dense tails
+            tail_length=100000.0   # Extremely long tails matching the XY exaggeration scale
+        )
         return Response(content=glb_data, media_type="model/gltf-binary")
 
     except HTTPException:
