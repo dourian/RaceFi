@@ -90,10 +90,6 @@ export default function RecordRunCompleteSheet({
           }
         }
 
-        userPolyline = "eo{bFzqzgV?L@L?J?L@JAL?N?L?JAL?L"
-
-        challengePolyline = "eo{bFzqzgV?L@L?J?L@JAL?N?L?JAL?L"
-
         const challengeCoords = decodePolyline(challengePolyline)
 
         const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
