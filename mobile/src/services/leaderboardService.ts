@@ -1,11 +1,11 @@
-import { Challenge } from '../../constants/types';
-import { UserChallengeStatus } from './challengeService';
+import { Challenge } from "../../constants/types";
+import { UserChallengeStatus } from "./challengeService";
 
 export interface LeaderboardEntry {
   id: string;
   name: string;
   avatar?: string;
-  status: 'completed' | 'joined' | 'winner' | 'cashOut';
+  status: "completed" | "joined" | "winner" | "cashOut";
   isCurrentUser: boolean;
   ranking?: number;
   runTime?: string;
@@ -29,19 +29,26 @@ export class LeaderboardService {
    */
   static generateLeaderboard(
     challenge: Challenge,
-    userStatus: UserChallengeStatus
+    userStatus: UserChallengeStatus,
   ): LeaderboardData {
-    const isCompleted = ['completed', 'winner', 'cashOut'].includes(userStatus.status);
-    const isWinner = ['winner', 'cashOut'].includes(userStatus.status);
-    const isCashedOut = userStatus.status === 'cashOut';
-    
+    const isCompleted = ["completed", "winner", "cashOut"].includes(
+      userStatus.status,
+    );
+    const isWinner = ["winner", "cashOut"].includes(userStatus.status);
+    const isCashedOut = userStatus.status === "cashOut";
+
     if (!isCompleted) {
       // Show regular participants list for ongoing challenges
       return this.generateParticipantsList(challenge, userStatus);
     }
-    
+
     // Show final rankings for completed challenges
-    return this.generateFinalRankings(challenge, userStatus, isWinner, isCashedOut);
+    return this.generateFinalRankings(
+      challenge,
+      userStatus,
+      isWinner,
+      isCashedOut,
+    );
   }
 
   /**
@@ -52,16 +59,16 @@ export class LeaderboardService {
    */
   private static generateParticipantsList(
     challenge: Challenge,
-    userStatus: UserChallengeStatus
+    userStatus: UserChallengeStatus,
   ): LeaderboardData {
     const entries: LeaderboardEntry[] = [];
-    
+
     // Challenge Creator (always first)
     entries.push({
-      id: 'creator',
+      id: "creator",
       name: challenge.creator.name,
       avatar: challenge.creator.avatar,
-      status: 'completed',
+      status: "completed",
       isCurrentUser: false,
     });
 
@@ -71,7 +78,7 @@ export class LeaderboardService {
         id: `participant-${index}`,
         name: participant.name,
         avatar: participant.avatar,
-        status: participant.status === 'completed' ? 'completed' : 'joined',
+        status: participant.status === "completed" ? "completed" : "joined",
         isCurrentUser: false,
       });
     });
@@ -96,7 +103,7 @@ export class LeaderboardService {
     challenge: Challenge,
     userStatus: UserChallengeStatus,
     isWinner: boolean,
-    isCashedOut: boolean
+    isCashedOut: boolean,
   ): LeaderboardData {
     const entries: LeaderboardEntry[] = [];
     let currentRanking = 1;
@@ -105,13 +112,19 @@ export class LeaderboardService {
     // Winner (Current User) - Always show first if they won or cashed out
     if (isWinner || isCashedOut) {
       entries.push({
-        id: 'current-user-winner',
-        name: 'You',
-        status: isCashedOut ? 'cashOut' : 'winner',
+        id: "current-user-winner",
+        name: "You",
+        status: isCashedOut ? "cashOut" : "winner",
         isCurrentUser: true,
         ranking: 1,
-        runTime: userStatus.runData ? this.formatRunTime(userStatus.runData.duration) : undefined,
-        prizeAmount: isCashedOut ? userStatus.winnerRewards : (isWinner ? userStatus.winnerRewards : undefined),
+        runTime: userStatus.runData
+          ? this.formatRunTime(userStatus.runData.duration)
+          : undefined,
+        prizeAmount: isCashedOut
+          ? userStatus.winnerRewards
+          : isWinner
+            ? userStatus.winnerRewards
+            : undefined,
       });
       userRanking = 1;
       currentRanking = 2;
@@ -119,23 +132,25 @@ export class LeaderboardService {
 
     // Challenge Creator
     entries.push({
-      id: 'creator',
+      id: "creator",
       name: challenge.creator.name,
       avatar: challenge.creator.avatar,
-      status: 'completed',
+      status: "completed",
       isCurrentUser: false,
       ranking: currentRanking,
     });
     currentRanking++;
 
     // Other Completed Participants
-    const completedParticipants = challenge.participantsList.filter(p => p.status === 'completed');
+    const completedParticipants = challenge.participantsList.filter(
+      (p) => p.status === "completed",
+    );
     completedParticipants.slice(0, 3).forEach((participant, index) => {
       entries.push({
         id: `completed-${index}`,
         name: participant.name,
         avatar: participant.avatar,
-        status: 'completed',
+        status: "completed",
         isCurrentUser: false,
         ranking: currentRanking,
       });
@@ -143,27 +158,31 @@ export class LeaderboardService {
     });
 
     // Non-winner current user (if they completed but didn't win)
-    if (!isWinner && !isCashedOut && userStatus.status === 'completed') {
+    if (!isWinner && !isCashedOut && userStatus.status === "completed") {
       entries.push({
-        id: 'current-user-completed',
-        name: 'You',
-        status: 'completed',
+        id: "current-user-completed",
+        name: "You",
+        status: "completed",
         isCurrentUser: true,
         ranking: currentRanking,
-        runTime: userStatus.runData ? this.formatRunTime(userStatus.runData.duration) : undefined,
+        runTime: userStatus.runData
+          ? this.formatRunTime(userStatus.runData.duration)
+          : undefined,
       });
       userRanking = currentRanking;
       currentRanking++;
     }
 
     // Remaining joined participants who haven't completed
-    const joinedParticipants = challenge.participantsList.filter(p => p.status === 'joined');
+    const joinedParticipants = challenge.participantsList.filter(
+      (p) => p.status === "joined",
+    );
     joinedParticipants.slice(0, 2).forEach((participant, index) => {
       entries.push({
         id: `joined-${index}`,
         name: participant.name,
         avatar: participant.avatar,
-        status: 'joined',
+        status: "joined",
         isCurrentUser: false,
       });
     });
@@ -193,7 +212,7 @@ export class LeaderboardService {
   private static formatRunTime(duration: number): string {
     const minutes = Math.floor(duration / 60);
     const seconds = duration % 60;
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
   }
 
   /**
@@ -206,7 +225,7 @@ export class LeaderboardService {
   static getLeaderboardTitle(
     isCompleted: boolean,
     totalParticipants: number,
-    maxParticipants: number
+    maxParticipants: number,
   ): string {
     if (isCompleted) {
       return "Final Rankings";

@@ -1,5 +1,4 @@
 import { Challenge, Participant } from "../../constants/types";
-import { challenges } from "../../constants";
 import supabase from "../../app/lib/supabase";
 
 export interface ChallengeCreateRequest {
@@ -29,15 +28,12 @@ export class ApiService {
   // Challenge-related methods
   static async getChallenges(): Promise<Challenge[]> {
     const { data, error } = await supabase.from("challenges").select("*");
-    if (error) {
-      throw error;
-    }
-    const { data: runs, error: runsError } = await supabase
-      .from("runs")
-      .select("*");
-    if (runsError) {
-      throw runsError;
-    }
+    if (error) throw error;
+
+    const { data: tracks, error: tracksError } = await supabase
+      .from("tracks")
+      .select("challenge_id, polyline");
+    if (tracksError) throw tracksError;
 
     // Transform the data to ensure dates are Date objects and provide defaults for missing fields
     return data.map((challenge) => ({
@@ -46,15 +42,13 @@ export class ApiService {
         ? new Date(challenge.start_date)
         : new Date(),
       endDate: challenge.end_date ? new Date(challenge.end_date) : new Date(),
-      creator: challenge.creator || {
+      creator: (challenge as any).creator || {
         name: "Challenge Creator",
         avatar: null,
         time: "N/A",
       },
-      polyline:
-        runs.find((run) => run.challenge_id === challenge.id)?.polyline ||
-        "c~zbFfdtgVuHbBaFlGsApJrApJ`FlGtHbBtHcB`FmGrAqJsAqJaFmGuHcB",
-      participantsList: challenge.participantsList || [],
+      polyline: tracks?.find((t) => t.challenge_id === challenge.id)?.polyline,
+      participantsList: (challenge as any).participantsList || [],
     }));
   }
 
@@ -66,29 +60,38 @@ export class ApiService {
       .single();
 
     if (error) {
-      if (error.code === "PGRST116") {
+      if ((error as any).code === "PGRST116") {
         // No rows returned
         return undefined;
       }
       throw error;
     }
 
+    // Fetch track polyline for this challenge
+    const { data: track, error: trackError } = await supabase
+      .from("tracks")
+      .select("polyline")
+      .eq("challenge_id", data.id)
+      .maybeSingle();
+    if (trackError) throw trackError;
+
     // Transform the data to ensure dates are Date objects and provide defaults for missing fields
     return {
       ...data,
       startDate: data.start_date ? new Date(data.start_date) : new Date(),
       endDate: data.end_date ? new Date(data.end_date) : new Date(),
-      creator: data.creator || {
+      creator: (data as any).creator || {
         name: "Challenge Creator",
         avatar: null,
         time: "N/A",
       },
-      participantsList: data.participantsList || [],
+      polyline: (track as any)?.polyline,
+      participantsList: (data as any).participantsList || [],
     };
   }
 
   static async createChallenge(
-    challengeData: ChallengeCreateRequest
+    challengeData: ChallengeCreateRequest,
   ): Promise<Challenge> {
     // Validate dates (basic validation)
     const startDate = new Date(challengeData.start_date);
@@ -157,19 +160,63 @@ export class ApiService {
 
   // Participant-related methods
   static async getParticipants(challengeId: string): Promise<Participant[]> {
-    // TODO: Replace with actual API call
-    // return await fetch(`/api/challenges/${challengeId}/participants`).then(res => res.json());
-    const challenge = challenges.find((c) => c.id === challengeId);
-    return Promise.resolve(challenge?.participantsList || []);
+    const cid = Number(challengeId);
+    if (!Number.isFinite(cid)) return [];
+
+    const { data, error } = await supabase
+      .from("challenge_attendees")
+      .select(
+        "status,start_time,end_time,profiles:first_name,profiles:last_name,profiles:avatar_url,profiles:id",
+      )
+      .eq("challenge_id", cid);
+
+    if (error) throw error;
+
+    // PostgREST flattens when using column renames inconsistently across versions.
+    // To be robust, we read any embedded "profiles" object if present, else flat fields.
+    return (data as any[]).map((row: any) => {
+      const p = row.profiles || row;
+      const first = p.first_name || "";
+      const last = p.last_name || "";
+      const name = `${first} ${last}`.trim() || "Participant";
+      const status = row.status as any as Participant["status"]; // already matches enum
+      return {
+        name,
+        avatar: p.avatar_url || null,
+        status,
+        // Optionally surface a human time label if end_time exists
+        time: row.end_time || undefined,
+      } as Participant;
+    });
   }
 
   static async getChallengeCreator(
-    challengeId: string
+    challengeId: string,
   ): Promise<{ name: string; avatar: any; time: string } | null> {
-    // TODO: Replace with actual API call
-    // return await fetch(`/api/challenges/${challengeId}/creator`).then(res => res.json());
-    const challenge = challenges.find((c) => c.id === challengeId);
-    return Promise.resolve(challenge?.creator || null);
+    const cid = Number(challengeId);
+    if (!Number.isFinite(cid)) return null;
+
+    // Fetch challenge to get creator profile id
+    const { data: ch, error: chErr } = await supabase
+      .from("challenges")
+      .select("created_by_profile_id")
+      .eq("id", cid)
+      .single();
+    if (chErr) throw chErr;
+    const pid = (ch as any)?.created_by_profile_id;
+    if (!pid) return null;
+
+    const { data: prof, error: pErr } = await supabase
+      .from("profiles")
+      .select("first_name,last_name,avatar_url")
+      .eq("id", pid)
+      .maybeSingle();
+    if (pErr) throw pErr;
+
+    const first = prof?.first_name || "";
+    const last = prof?.last_name || "";
+    const name = `${first} ${last}`.trim() || "Challenge Creator";
+    return { name, avatar: prof?.avatar_url || null, time: "N/A" };
   }
 
   // Future API methods (commented out for now)

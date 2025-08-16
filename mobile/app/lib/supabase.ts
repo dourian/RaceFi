@@ -13,7 +13,7 @@ export const supabase = createClient(
       persistSession: true,
       detectSessionInUrl: false,
     },
-  }
+  },
 );
 
 export const signUp = async (email: string, password: string) => {

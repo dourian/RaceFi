@@ -1,7 +1,7 @@
-import { RunCalculationService } from './runCalculationService';
-import { timeManager } from '../../constants/timeManager';
-import { Challenge } from '../../constants/types';
-import { UserBalanceService } from './userBalanceService';
+import { RunCalculationService } from "./runCalculationService";
+import { timeManager } from "../../constants/timeManager";
+import { Challenge } from "../../constants/types";
+import { UserBalanceService } from "./userBalanceService";
 
 export interface ChallengeRunData {
   coords: { latitude: number; longitude: number; timestamp: number }[];
@@ -13,7 +13,13 @@ export interface ChallengeRunData {
 
 export interface UserChallengeStatus {
   challengeId: string;
-  status: 'not-joined' | 'joined' | 'in-progress' | 'completed' | 'winner' | 'cashOut';
+  status:
+    | "not-joined"
+    | "joined"
+    | "in-progress"
+    | "completed"
+    | "winner"
+    | "cashOut";
   joinedAt?: Date;
   runData?: ChallengeRunData;
   isWinner?: boolean;
@@ -39,7 +45,7 @@ export class ChallengeService {
   static createInitialStatus(challengeId: string): UserChallengeStatus {
     return {
       challengeId,
-      status: 'not-joined',
+      status: "not-joined",
     };
   }
 
@@ -51,7 +57,7 @@ export class ChallengeService {
   static joinChallenge(challengeId: string): UserChallengeStatus {
     return {
       challengeId,
-      status: 'joined',
+      status: "joined",
       joinedAt: new Date(),
     };
   }
@@ -61,10 +67,12 @@ export class ChallengeService {
    * @param existingStatus Current challenge status
    * @returns Updated challenge status
    */
-  static startChallengeRun(existingStatus: UserChallengeStatus): UserChallengeStatus {
+  static startChallengeRun(
+    existingStatus: UserChallengeStatus,
+  ): UserChallengeStatus {
     return {
       ...existingStatus,
-      status: 'in-progress',
+      status: "in-progress",
     };
   }
 
@@ -75,8 +83,8 @@ export class ChallengeService {
    * @returns Updated challenge status
    */
   static completeChallengeRun(
-    existingStatus: UserChallengeStatus, 
-    runData: Omit<ChallengeRunData, 'completedAt'>
+    existingStatus: UserChallengeStatus,
+    runData: Omit<ChallengeRunData, "completedAt">,
   ): UserChallengeStatus {
     const challengeRunData: ChallengeRunData = {
       ...runData,
@@ -85,7 +93,7 @@ export class ChallengeService {
 
     return {
       ...existingStatus,
-      status: 'completed',
+      status: "completed",
       runData: challengeRunData,
     };
   }
@@ -98,8 +106,8 @@ export class ChallengeService {
    */
   static createRunData(
     coords: { latitude: number; longitude: number; timestamp: number }[],
-    durationSeconds: number
-  ): Omit<ChallengeRunData, 'completedAt'> {
+    durationSeconds: number,
+  ): Omit<ChallengeRunData, "completedAt"> {
     const distance = RunCalculationService.calculateDistance(coords);
     const pace = RunCalculationService.calculatePace(coords);
 
@@ -116,7 +124,9 @@ export class ChallengeService {
    * @param runData Challenge run data
    * @returns Formatted display data
    */
-  static formatRunDataForDisplay(runData: ChallengeRunData): ChallengeFormattedData {
+  static formatRunDataForDisplay(
+    runData: ChallengeRunData,
+  ): ChallengeFormattedData {
     return {
       formattedDuration: RunCalculationService.formatDuration(runData.duration),
       formattedDistance: RunCalculationService.formatDistance(runData.distance),
@@ -130,7 +140,7 @@ export class ChallengeService {
    * @returns Whether the user can start recording
    */
   static canStartRecording(status: UserChallengeStatus): boolean {
-    return status.status === 'joined' || status.status === 'in-progress';
+    return status.status === "joined" || status.status === "in-progress";
   }
 
   /**
@@ -139,7 +149,7 @@ export class ChallengeService {
    * @returns Whether the challenge is completed
    */
   static isCompleted(status: UserChallengeStatus): boolean {
-    return status.status === 'completed';
+    return status.status === "completed";
   }
 
   /**
@@ -148,7 +158,7 @@ export class ChallengeService {
    * @returns Whether the challenge is in progress
    */
   static isInProgress(status: UserChallengeStatus): boolean {
-    return status.status === 'in-progress';
+    return status.status === "in-progress";
   }
 
   /**
@@ -157,7 +167,7 @@ export class ChallengeService {
    * @returns Whether the user has joined
    */
   static hasJoined(status: UserChallengeStatus): boolean {
-    return status.status !== 'not-joined';
+    return status.status !== "not-joined";
   }
 
   /**
@@ -167,16 +177,16 @@ export class ChallengeService {
    */
   static getActionButtonText(status: UserChallengeStatus): string {
     switch (status.status) {
-      case 'not-joined':
-        return 'Stake & Join Challenge';
-      case 'joined':
-        return 'Start Recording';
-      case 'in-progress':
-        return 'Continue Recording';
-      case 'completed':
-        return 'Challenge Completed';
+      case "not-joined":
+        return "Stake & Join Challenge";
+      case "joined":
+        return "Start Recording";
+      case "in-progress":
+        return "Continue Recording";
+      case "completed":
+        return "Challenge Completed";
       default:
-        return 'Unknown Status';
+        return "Unknown Status";
     }
   }
 
@@ -187,20 +197,20 @@ export class ChallengeService {
    */
   static getStatusCardTitle(status: UserChallengeStatus): string {
     switch (status.status) {
-      case 'not-joined':
-        return 'Join Challenge';
-      case 'joined':
-        return 'Ready to Run!';
-      case 'in-progress':
-        return 'Challenge In Progress';
-      case 'completed':
-        return 'Challenge Completed!';
-      case 'winner':
-        return '🏆 Challenge Winner!';
-      case 'cashOut':
-        return '💰 Winnings Cashed Out';
+      case "not-joined":
+        return "Join Challenge";
+      case "joined":
+        return "Ready to Run!";
+      case "in-progress":
+        return "Challenge In Progress";
+      case "completed":
+        return "Challenge Completed!";
+      case "winner":
+        return "🏆 Challenge Winner!";
+      case "cashOut":
+        return "💰 Winnings Cashed Out";
       default:
-        return 'Challenge Status';
+        return "Challenge Status";
     }
   }
 
@@ -214,27 +224,27 @@ export class ChallengeService {
   static simulateWinner(
     existingStatus: UserChallengeStatus,
     prizePoolAmount: number,
-    challenge: Challenge
+    challenge: Challenge,
   ): UserChallengeStatus {
-    if (existingStatus.status !== 'completed') {
-      throw new Error('Can only make completed challenges into winners');
+    if (existingStatus.status !== "completed") {
+      throw new Error("Can only make completed challenges into winners");
     }
 
     // CRITICAL: Winner cannot be determined until the race is expired
     if (!this.isRaceExpired(challenge)) {
-      throw new Error('Winner cannot be determined until the race is expired');
+      throw new Error("Winner cannot be determined until the race is expired");
     }
 
     // Automatically add winnings to balance
     UserBalanceService.addWinnings(
       challenge.id,
       challenge.name,
-      prizePoolAmount
+      prizePoolAmount,
     );
 
     return {
       ...existingStatus,
-      status: 'cashOut', // Directly to cashOut since winnings are already in balance
+      status: "cashOut", // Directly to cashOut since winnings are already in balance
       isWinner: true,
       winnerRewards: prizePoolAmount,
       cashedOutAt: new Date(),
@@ -249,37 +259,62 @@ export class ChallengeService {
    */
   static createMockRunData(
     challengeId: string,
-    isWinningTime: boolean = true
-  ): Omit<ChallengeRunData, 'completedAt'> {
+    isWinningTime: boolean = true,
+  ): Omit<ChallengeRunData, "completedAt"> {
     // Mock coordinates for a short route
     const mockCoords = [
-      { latitude: 37.7749, longitude: -122.4194, timestamp: Date.now() - 1800000 }, // 30 min ago
-      { latitude: 37.7751, longitude: -122.4196, timestamp: Date.now() - 1500000 }, // 25 min ago  
-      { latitude: 37.7753, longitude: -122.4198, timestamp: Date.now() - 1200000 }, // 20 min ago
-      { latitude: 37.7755, longitude: -122.4200, timestamp: Date.now() - 900000 },  // 15 min ago
-      { latitude: 37.7757, longitude: -122.4202, timestamp: Date.now() - 600000 },  // 10 min ago
-      { latitude: 37.7759, longitude: -122.4204, timestamp: Date.now() - 300000 },  // 5 min ago
+      {
+        latitude: 37.7749,
+        longitude: -122.4194,
+        timestamp: Date.now() - 1800000,
+      }, // 30 min ago
+      {
+        latitude: 37.7751,
+        longitude: -122.4196,
+        timestamp: Date.now() - 1500000,
+      }, // 25 min ago
+      {
+        latitude: 37.7753,
+        longitude: -122.4198,
+        timestamp: Date.now() - 1200000,
+      }, // 20 min ago
+      { latitude: 37.7755, longitude: -122.42, timestamp: Date.now() - 900000 }, // 15 min ago
+      {
+        latitude: 37.7757,
+        longitude: -122.4202,
+        timestamp: Date.now() - 600000,
+      }, // 10 min ago
+      {
+        latitude: 37.7759,
+        longitude: -122.4204,
+        timestamp: Date.now() - 300000,
+      }, // 5 min ago
     ];
 
     // Generate different times based on challenge and whether it's winning
     let duration: number;
     let pace: string;
-    
-    if (challengeId === 'waterfront-5k') {
+
+    if (challengeId === "waterfront-5k") {
       // 5K challenge
       duration = isWinningTime ? 1200 : 1500; // 20 min vs 25 min
-      pace = isWinningTime ? '4:00' : '5:00';
-    } else if (challengeId === 'uptown-10k') {
-      // 10K challenge  
+      pace = isWinningTime ? "4:00" : "5:00";
+    } else if (challengeId === "uptown-10k") {
+      // 10K challenge
       duration = isWinningTime ? 2400 : 3000; // 40 min vs 50 min
-      pace = isWinningTime ? '4:00' : '5:00';
+      pace = isWinningTime ? "4:00" : "5:00";
     } else {
       // Default for unknown challenges (assume 5K)
       duration = isWinningTime ? 1200 : 1500; // 20 min vs 25 min
-      pace = isWinningTime ? '4:00' : '5:00';
+      pace = isWinningTime ? "4:00" : "5:00";
     }
 
-    const distance = challengeId === 'waterfront-5k' ? 5000 : challengeId === 'uptown-10k' ? 10000 : 5000; // meters
+    const distance =
+      challengeId === "waterfront-5k"
+        ? 5000
+        : challengeId === "uptown-10k"
+          ? 10000
+          : 5000; // meters
 
     return {
       coords: mockCoords,
@@ -295,36 +330,34 @@ export class ChallengeService {
    * @returns Whether the user won the challenge
    */
   static isWinner(status: UserChallengeStatus): boolean {
-    return status.isWinner === true || status.status === 'winner';
+    return status.isWinner === true || status.status === "winner";
   }
 
-/**
+  /**
    * Add winning rewards to balance (previously direct cashout)
    * @param existingStatus Current challenge status
    * @returns Updated status with winnings recorded
    */
   static addWinningsToBalance(
-    existingStatus: UserChallengeStatus
+    existingStatus: UserChallengeStatus,
   ): UserChallengeStatus {
-    if (existingStatus.status !== 'winner') {
-      throw new Error('Can only add winnings from winner status');
+    if (existingStatus.status !== "winner") {
+      throw new Error("Can only add winnings from winner status");
     }
 
     return {
       ...existingStatus,
-      status: 'cashOut',
+      status: "cashOut",
       cashedOutAt: new Date(),
     };
   }
-  
+
   /**
    * Legacy cashout method (kept for backward compatibility)
    * @param existingStatus Current challenge status
    * @returns Updated status as cashed out
    */
-  static cashOut(
-    existingStatus: UserChallengeStatus
-  ): UserChallengeStatus {
+  static cashOut(existingStatus: UserChallengeStatus): UserChallengeStatus {
     return this.addWinningsToBalance(existingStatus);
   }
 
@@ -334,7 +367,7 @@ export class ChallengeService {
    * @returns Whether the challenge winnings have been cashed out
    */
   static isCashedOut(status: UserChallengeStatus): boolean {
-    return status.status === 'cashOut';
+    return status.status === "cashOut";
   }
 
   /**
@@ -352,8 +385,11 @@ export class ChallengeService {
    * @param challenges Array of challenges to lookup from
    * @returns Whether the race has expired
    */
-  static isRaceExpiredById(challengeId: string, challenges: Challenge[]): boolean {
-    const challenge = challenges.find(c => c.id === challengeId);
+  static isRaceExpiredById(
+    challengeId: string,
+    challenges: Challenge[],
+  ): boolean {
+    const challenge = challenges.find((c) => c.id === challengeId);
     if (!challenge) {
       throw new Error(`Challenge with id ${challengeId} not found`);
     }
