@@ -68,6 +68,16 @@ export default function TabsLayout() {
               ),
             }}
           />
+          <Tabs.Screen
+            name="map_test"
+            options={{
+              title: "Map Test",
+              tabBarIcon: ({ color, size }) => (
+                <Ionicons name="map-outline" size={size ?? 22} color={color} />
+              ),
+              tabBarStyle: { display: "none" },
+            }}
+          />
         </Tabs>
       </AuthWrapper>
     </LocationProvider>

@@ -5,7 +5,7 @@ import { useLocation } from '../app/contexts/locationContext';
 import { Ionicons } from '@expo/vector-icons';
 import theme from '../app/theme';
 
-export default function Map({ showsUserLocation, followsUserLocation, initialZoom = 0.01, alterMapEnabled, staticPolyline, movingPolyline, routeColor = '#e64a00', arrowMarkers }: { 
+export default function Map({ showsUserLocation, followsUserLocation, initialZoom = 0.01, alterMapEnabled, staticPolyline, movingPolyline, routeColor = '#e64a00', arrowMarkers, recenterToRouteTrigger }: { 
     showsUserLocation?: boolean, 
     followsUserLocation?: boolean, 
     alterMapEnabled?: boolean,
@@ -14,6 +14,7 @@ export default function Map({ showsUserLocation, followsUserLocation, initialZoo
     movingPolyline?: Array<{ latitude: number, longitude: number }>,
     routeColor?: string,
     arrowMarkers?: Array<{ coordinate: { latitude: number, longitude: number }, bearing: number }>,
+    recenterToRouteTrigger?: number,
 }) {
     const [isGuest, setIsGuest] = useState(false);
     const { currentLocation, getCurrentLocation, locationPermission } = useLocation();
@@ -103,6 +104,19 @@ export default function Map({ showsUserLocation, followsUserLocation, initialZoo
         }
     }, [followsUserLocation, currentLocation, mapRef]);
 
+    // Recenter to the static route when triggered
+    useEffect(() => {
+        if (!recenterToRouteTrigger) return;
+        if (!mapRef) return;
+        if (!staticPolyline || staticPolyline.length === 0) return;
+        try {
+            mapRef.fitToCoordinates(staticPolyline, {
+                edgePadding: { top: 80, right: 80, bottom: 80, left: 80 },
+                animated: true,
+            });
+        } catch {}
+    }, [recenterToRouteTrigger, staticPolyline, mapRef]);
+
     if (!isGuest && locationPermission !== 'granted') {
         return (
             <View style={styles.container}>
@@ -152,7 +166,7 @@ export default function Map({ showsUserLocation, followsUserLocation, initialZoo
                         </View>
                     </Marker>
                 ))}
-                {staticPolyline && staticPolyline.length > 1 && (
+                {staticPolyline && !arrowMarkers && staticPolyline.length > 1 && (
                     <>
                         <Marker
                             coordinate={staticPolyline[0]}

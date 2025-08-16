@@ -42,12 +42,12 @@ export default function RunComplete() {
     
     // For now, just show an alert and navigate back
     alert('Run submitted successfully!');
-    router.replace('/record');
+    router.replace('/recordRun');
   };
 
   const handleReset = () => {
     // Navigate back to record screen
-    router.replace('/record');
+    router.replace('/recordRun');
   };
 
   if (!runData) {

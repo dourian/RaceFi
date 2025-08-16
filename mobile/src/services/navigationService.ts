@@ -26,7 +26,7 @@ export class NavigationService {
    */
   static navigateToRecordChallenge(router: Router, challengeId: string): void {
     router.push({
-      pathname: '/record',
+      pathname: '/recordRun',
       params: { id: challengeId }
     });
   }
@@ -36,7 +36,7 @@ export class NavigationService {
    * @param router Expo router instance
    */
   static navigateToRecord(router: Router): void {
-    router.push('/record');
+    router.push('/recordRun');
   }
 
   /**
@@ -71,7 +71,7 @@ export class NavigationService {
    */
   static getChallengeRecordRoute(challengeId: string): { pathname: string; params: { id: string } } {
     return {
-      pathname: '/record',
+      pathname: '/recordRun ',
       params: { id: challengeId }
     };
   }

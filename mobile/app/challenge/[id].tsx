@@ -420,7 +420,7 @@ export default function ChallengeDetail() {
                   submit your result!
                 </Text>
                 <Link
-                  href={{ pathname: "/record", params: { id: challenge.id } }}
+                  href={{ pathname: "/recordRun", params: { id: challenge.id } }}
                   asChild
                 >
                   <Pressable style={styles.continueButton}>
@@ -447,7 +447,7 @@ export default function ChallengeDetail() {
                   before the deadline to earn rewards!
                 </Text>
                 <Link
-                  href={{ pathname: "/record", params: { id: challenge.id } }}
+                  href={{ pathname: "/recordRun", params: { id: challenge.id } }}
                   asChild
                 >
                   <Pressable 

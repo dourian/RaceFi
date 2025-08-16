@@ -1,14 +1,11 @@
 import Map from "./map";
 import { nycPolyline, appleParkPolyline, buildArrowMarkers } from "../src/helpers/polyline";
 
-export default function RecordRunMap({ coords, watching }: { coords: { latitude: number; longitude: number; timestamp: number }[], watching: boolean }) {
+export default function RecordRunMap({ coords, watching, recenterToRouteTrigger }: { coords: { latitude: number; longitude: number; timestamp: number }[], watching: boolean, recenterToRouteTrigger?: number }) {
     const movingPolyline = coords.map(coord => ({
         latitude: coord.latitude,
         longitude: coord.longitude,
     }));
-
-    type LatLng = { latitude: number; longitude: number };
-
 
     const arrowMarkers = buildArrowMarkers(nycPolyline);
     
@@ -20,6 +17,7 @@ export default function RecordRunMap({ coords, watching }: { coords: { latitude:
         movingPolyline={movingPolyline}
         staticPolyline={nycPolyline}
         arrowMarkers={arrowMarkers}
+        recenterToRouteTrigger={recenterToRouteTrigger}
     />
     )
 }

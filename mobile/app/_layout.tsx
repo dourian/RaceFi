@@ -54,11 +54,9 @@ export default function RootLayout() {
               }}
             />
             <Stack.Screen
-              name="record"
+              name="recordRun"
               options={{
-                title: "Record Run",
-                headerLeft: () => <CustomBackButton />,
-                headerBackVisible: false,
+                headerShown: false,
               }}
             />
           </Stack>

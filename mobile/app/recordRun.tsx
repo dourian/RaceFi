@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Text, StyleSheet, Pressable, View } from "react-native";
+import { Text, StyleSheet, Pressable, View, Animated, Dimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, spacing, typography, shadows } from "./theme";
 import { useLocation } from "./contexts/locationContext";
@@ -10,6 +10,7 @@ import { RunCalculationService } from "../src/services/runCalculationService";
 import { ChallengeService } from "../src/services/challengeService";
 import { NavigationService } from "../src/services/navigationService";
 import RecordRunMap from "../components/recordRunMap";
+import RecordRunCompleteSheet from "../components/recordRunCompleteSheet";
 
 export default function RecordRun() {
   const router = useRouter();
@@ -42,6 +43,8 @@ export default function RecordRun() {
     distance: number;
     pace: string;
   } | null>(null);
+  const [recenterKey, setRecenterKey] = useState(0);
+  const mapTranslateY = useRef(new Animated.Value(0)).current;
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Store location updates in coords when location changes
@@ -81,6 +84,26 @@ export default function RecordRun() {
       }
     };
   }, []);
+
+  // After completion, slide map up by 20% screen height after 0.2s
+  useEffect(() => {
+    if (runCompleted) {
+      const timeoutId = setTimeout(() => {
+        Animated.timing(mapTranslateY, {
+          toValue: -Dimensions.get('window').height * 0.2,
+          duration: 250,
+          useNativeDriver: true,
+        }).start();
+      }, 250);
+      return () => clearTimeout(timeoutId);
+    } else {
+      Animated.timing(mapTranslateY, {
+        toValue: 0,
+        duration: 250,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [runCompleted, mapTranslateY]);
 
   const start = async () => {
     console.log('Start button pressed');
@@ -150,6 +173,7 @@ export default function RecordRun() {
       pace: runMetrics.pace,
     });
     setRunCompleted(true);
+    setRecenterKey((k) => k + 1);
   };
 
   // Returns elapsed time as "MM:SS" or "HH:MM:SS" if >= 1 hour
@@ -236,51 +260,60 @@ export default function RecordRun() {
         )}
   
         {/* Map Section - takes up most of the screen */}
-        <View style={styles.mapContainer}>
-          <RecordRunMap coords={coords} watching={watching}/>
-        </View>
+        <Animated.View style={[styles.mapContainer, { transform: [{ translateY: mapTranslateY }] }]}>
+          <RecordRunMap coords={coords} watching={watching} recenterToRouteTrigger={recenterKey}/>
+        </Animated.View>
   
-        {/* Control Section */}
-        <View style={styles.bottomAction}>
+        {/* Control Section or Completion Sheet */}
+        {!runCompleted && (
+          <View style={styles.bottomAction}>
             <Pressable
-                style={({ pressed }) => [
+              style={({ pressed }) => [
                 styles.circleButton,
                 watching ? styles.circleButtonStop : styles.circleButtonStart,
                 pressed && { transform: [{ scale: 0.95 }] },
-                ]}
-                onPress={watching ? stop : start}
-                disabled={locationPermission !== "granted" || isLoading}
+              ]}
+              onPress={watching ? stop : start}
+              disabled={locationPermission !== "granted" || isLoading}
             >
-                <Ionicons
-                name={watching ? "stop" : "play"}
-                size={40}
-                color="#ffffff"
-                />
+              <Ionicons name={watching ? "stop" : "play"} size={40} color="#ffffff" />
             </Pressable>
 
-          
-          {/* Stats Section - below the button */}
-          <View style={styles.primaryStats}>
-            <View style={styles.primaryStatItem}>
-              <Text style={styles.primaryStatValue}>{elapsedTimeFormatted}</Text>
-              <Text style={styles.primaryStatLabel}>Time</Text>
-            </View>
-            <View style={styles.primaryStatItem}>
-              <Text style={styles.primaryStatValue}>
-                {coords.length > 1 ? RunCalculationService.calculatePace(coords) : "--:--"}
-              </Text>
-              <Text style={styles.primaryStatLabel}>Pace/km</Text>
-            </View>
-            <View style={styles.primaryStatItem}>
-              <Text style={styles.primaryStatValue}>
-                {coords.length > 1 
-                  ? `${RunCalculationService.formatDistance(RunCalculationService.calculateDistance(coords))}` 
-                  : "0.00km"}
-              </Text>
-              <Text style={styles.primaryStatLabel}>Distance</Text>
+            {/* Stats Section - below the button */}
+            <View style={styles.primaryStats}>
+              <View style={styles.primaryStatItem}>
+                <Text style={styles.primaryStatValue}>{elapsedTimeFormatted}</Text>
+                <Text style={styles.primaryStatLabel}>Time</Text>
+              </View>
+              <View style={styles.primaryStatItem}>
+                <Text style={styles.primaryStatValue}>
+                  {coords.length > 1 ? RunCalculationService.calculatePace(coords) : "--:--"}
+                </Text>
+                <Text style={styles.primaryStatLabel}>Pace/km</Text>
+              </View>
+              <View style={styles.primaryStatItem}>
+                <Text style={styles.primaryStatValue}>
+                  {coords.length > 1
+                    ? `${RunCalculationService.formatDistance(RunCalculationService.calculateDistance(coords))}`
+                    : "0.00km"}
+                </Text>
+                <Text style={styles.primaryStatLabel}>Distance</Text>
+              </View>
             </View>
           </View>
-        </View>
+        )}
+
+        {runCompleted && completedRunData && (
+          <RecordRunCompleteSheet
+            visible={runCompleted}
+            durationSeconds={completedRunData.duration}
+            distanceMeters={completedRunData.distance}
+            pace={completedRunData.pace}
+            onSubmit={handleSubmitRun}
+            onReset={handleResetRun}
+            challengeId={challengeId}
+          />
+        )}
       </SafeAreaView>
     );
 }
