@@ -1,10 +1,12 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { useAuth } from '../lib/auth-context';
+import { useChallenge } from '../contexts/challengeContext';
 import { colors, shadows } from '../theme';
 
 const Profile: React.FC = () => {
   const { user, signOut } = useAuth();
+  const { resetAllChallenges } = useChallenge();
 
   const handleSignOut = async () => {
     Alert.alert(
@@ -20,6 +22,24 @@ const Profile: React.FC = () => {
             if (error) {
               Alert.alert('Error', 'Failed to sign out');
             }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleResetChallenges = () => {
+    Alert.alert(
+      'Reset All Challenges',
+      'This will reset all challenge statuses back to not-joined. This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset All',
+          style: 'destructive',
+          onPress: () => {
+            resetAllChallenges();
+            Alert.alert('Success', 'All challenge statuses have been reset');
           },
         },
       ]
@@ -45,6 +65,10 @@ const Profile: React.FC = () => {
           {user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}
         </Text>
       </View>
+
+      <TouchableOpacity style={styles.resetButton} onPress={handleResetChallenges}>
+        <Text style={styles.resetButtonText}>Reset All Challenges (Testing)</Text>
+      </TouchableOpacity>
 
       <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
         <Text style={styles.signOutText}>Sign Out</Text>
@@ -91,6 +115,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.text,
     marginBottom: 10,
+  },
+  resetButton: {
+    backgroundColor: '#ff9500',
+    padding: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  resetButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
   },
   signOutButton: {
     backgroundColor: '#dc3545',

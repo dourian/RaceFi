@@ -95,37 +95,72 @@ export class NavigationService {
   }
 
   /**
+   * Navigate to completion page with run data
+   * @param router Expo router instance
+   * @param duration Run duration in seconds
+   * @param distance Run distance in meters
+   * @param pace Run pace string
+   * @param isChallenge Whether this is a challenge run
+   */
+  static navigateToCompletion(
+    router: Router,
+    duration: number,
+    distance: number,
+    pace: string,
+    isChallenge: boolean = false
+  ): void {
+    // Navigate to completion page - we'll handle back button via headerBackVisible: false
+    router.push({
+      pathname: '/completion',
+      params: {
+        duration: duration.toString(),
+        distance: distance.toString(),
+        pace: pace,
+        isChallenge: isChallenge.toString()
+      }
+    });
+  }
+
+  /**
+   * Navigate directly to home and reset navigation stack
+   * @param router Expo router instance
+   */
+  static navigateToHomeAndReset(router: Router): void {
+    router.dismissAll();
+    router.replace('/(tabs)');
+  }
+
+  /**
    * Handle challenge completion navigation
    * @param router Expo router instance
    * @param challengeId The challenge ID
-   * @param showAlert Whether to show success alert
+   * @param duration Run duration in seconds
+   * @param distance Run distance in meters
+   * @param pace Run pace string
    */
   static handleChallengeCompletion(
     router: Router, 
-    challengeId: string, 
-    showAlert: boolean = true
+    challengeId: string,
+    duration: number,
+    distance: number,
+    pace: string
   ): void {
-    if (showAlert) {
-      // Note: In a real app, you might want to use a toast service instead of alert
-      alert('Challenge run submitted successfully!');
-    }
-    
-    this.navigateToChallengeDetail(router, challengeId);
+    this.navigateToCompletion(router, duration, distance, pace, true);
   }
 
   /**
    * Handle regular run completion
    * @param router Expo router instance
-   * @param showAlert Whether to show success alert
+   * @param duration Run duration in seconds
+   * @param distance Run distance in meters
+   * @param pace Run pace string
    */
   static handleRegularRunCompletion(
     router: Router,
-    showAlert: boolean = true
+    duration: number,
+    distance: number,
+    pace: string
   ): void {
-    if (showAlert) {
-      alert('Run submitted successfully!');
-    }
-    // For regular runs, we might stay on the same page or navigate elsewhere
-    // This is where you'd implement the regular run completion flow
+    this.navigateToCompletion(router, duration, distance, pace, false);
   }
 }

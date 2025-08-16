@@ -27,6 +27,7 @@ export type Challenge = {
   };
   participantsList: Participant[];
   track?: { lat: number; lng: number }[]; // placeholder for coordinates
+  routePreview?: any; // Route preview image
 };
 
 export const challenges: Challenge[] = [
@@ -39,9 +40,9 @@ export const challenges: Challenge[] = [
     stake: 5,
     elevation: 85,
     difficulty: "Moderate",
-    prizePool: 120,
-    participants: 18,
-    maxParticipants: 30,
+    prizePool: 20,
+    participants: 4,
+    maxParticipants: 12,
     location: "San Francisco, CA",
     startDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000),
     endDate: new Date(Date.now() + 8 * 24 * 60 * 60 * 1000),
@@ -79,9 +80,9 @@ export const challenges: Challenge[] = [
     stake: 10,
     elevation: 156,
     difficulty: "Hard",
-    prizePool: 240,
-    participants: 12,
-    maxParticipants: 25,
+    prizePool: 40,
+    participants: 4,
+    maxParticipants: 15,
     location: "New York, NY",
     startDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
     endDate: new Date(Date.now() + 9 * 24 * 60 * 60 * 1000),

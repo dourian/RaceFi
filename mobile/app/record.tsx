@@ -173,12 +173,22 @@ export default function RecordRun() {
         completedAt: new Date(),
       });
       
-      // Use navigation service
-      NavigationService.handleChallengeCompletion(router, challengeId);
+      // Use navigation service with run data
+      NavigationService.handleChallengeCompletion(
+        router, 
+        challengeId, 
+        completedRunData.duration, 
+        completedRunData.distance, 
+        completedRunData.pace
+      );
     } else {
-      // Use navigation service for regular runs
-      NavigationService.handleRegularRunCompletion(router);
-      handleResetRun();
+      // Use navigation service for regular runs with run data
+      NavigationService.handleRegularRunCompletion(
+        router,
+        completedRunData.duration,
+        completedRunData.distance,
+        completedRunData.pace
+      );
     }
   };
 

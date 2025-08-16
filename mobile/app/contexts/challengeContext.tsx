@@ -13,6 +13,7 @@ interface ChallengeContextType {
   completeChallengeRun: (challengeId: string, runData: ChallengeRunData) => void;
   getChallengeStatus: (challengeId: string) => UserChallengeStatus;
   resetChallenge: (challengeId: string) => void;
+  resetAllChallenges: () => void;
 }
 
 const ChallengeContext = createContext<ChallengeContextType | undefined>(undefined);
@@ -89,6 +90,10 @@ export const ChallengeProvider: React.FC<{ children: ReactNode }> = ({ children 
     });
   };
 
+  const resetAllChallenges = () => {
+    setUserChallengeStatuses([]);
+  };
+
   const value: ChallengeContextType = {
     userChallengeStatuses,
     joinChallenge,
@@ -96,6 +101,7 @@ export const ChallengeProvider: React.FC<{ children: ReactNode }> = ({ children 
     completeChallengeRun,
     getChallengeStatus,
     resetChallenge,
+    resetAllChallenges,
   };
 
   return (

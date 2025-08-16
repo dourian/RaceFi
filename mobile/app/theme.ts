@@ -5,6 +5,7 @@ export const colors = {
   textMuted: "#9095AA",
   accent: "#fc5200", // Strava-like orange (highlights)
   accentStrong: "#e64a00", // Darker for primary buttons
+  border: "#e6e6ea", // Light gray border
 };
 
 export const spacing = {
