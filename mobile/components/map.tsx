@@ -33,10 +33,10 @@ export default function Map() {
             <MapView
                 style={styles.map}
                 initialRegion={{
-                    latitude: currentLocation?.latitude || 0,
-                    longitude: currentLocation?.longitude || 0,
-                    latitudeDelta: 0.01,
-                    longitudeDelta: 0.01,
+                    latitude: currentLocation?.latitude,
+                    longitude: currentLocation?.longitude,
+                    latitudeDelta: 0.05,
+                    longitudeDelta: 0.05,
                 }}
                 showsUserLocation={true}
                 showsMyLocationButton={true}
