@@ -3,9 +3,21 @@ import MapView from 'react-native-maps';
 import { StyleSheet, View, TouchableOpacity, Text } from 'react-native';
 import { useLocation } from '../app/contexts/locationContext';
 
-export default function Map() {
+export default function Map({ showsUserLocation, followsUserLocation, initialPosition, alterMapEnabled }: { 
+    showsUserLocation?: boolean, 
+    followsUserLocation?: boolean, 
+    initialPosition?: { latitude: number, longitude: number },
+    alterMapEnabled?: boolean,
+}) {
     const [isGuest, setIsGuest] = useState(false);
     const { currentLocation, getCurrentLocation, locationPermission } = useLocation();
+
+    const initialRegion = {
+        latitude: initialPosition ? initialPosition.latitude : currentLocation?.latitude,
+        longitude: initialPosition ? initialPosition.longitude : currentLocation?.longitude,
+        latitudeDelta: 0.05,
+        longitudeDelta: 0.05,
+    };
 
     useEffect(() => {
         const getLocation = async () => {
@@ -32,17 +44,14 @@ export default function Map() {
             {currentLocation && (
             <MapView
                 style={styles.map}
-                initialRegion={{
-                    latitude: currentLocation?.latitude,
-                    longitude: currentLocation?.longitude,
-                    latitudeDelta: 0.05,
-                    longitudeDelta: 0.05,
-                }}
-                showsUserLocation={true}
-                showsMyLocationButton={true}
-                rotateEnabled={false}
-                zoomEnabled={true}
-                followsUserLocation={true}
+                initialRegion={initialRegion}
+                showsUserLocation={showsUserLocation}
+                showsMyLocationButton={showsUserLocation}
+                rotateEnabled={alterMapEnabled}
+                zoomEnabled={alterMapEnabled}
+                followsUserLocation={followsUserLocation}
+                scrollEnabled={alterMapEnabled}
+                pitchEnabled={alterMapEnabled}
             />
             )}
         </View>
