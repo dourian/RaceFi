@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 from datetime import datetime
 from supabase import create_client, Client
 from config import settings
+from .challenge_attendee import create_challenge_attendee, ChallengeAttendeeCreate, ChallengeAttendeeResponse
 
 supabase: Client = create_client(
     settings.SUPABASE_URL,
@@ -26,10 +27,11 @@ class ChallengeBase(BaseModel):
     end_date: str
 
 class ChallengeCreate(ChallengeBase):
-    creator_id: Optional[str] = None
-    track_coordinates: Optional[List[dict]] = None
+    created_by_profile_id: int = Field(..., ge=1)
+    polyline: Optional[str] = None
 
 class ChallengeUpdate(BaseModel):
+    id: int = Field(..., ge=1)
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     description: Optional[str] = None
     distance_km: Optional[float] = Field(None, gt=0, le=1000)
@@ -37,10 +39,11 @@ class ChallengeUpdate(BaseModel):
     elevation: Optional[int] = Field(None, ge=0)
     difficulty: Optional[str] = Field(None, pattern="^(Easy|Moderate|Hard)$")
     prize_pool: Optional[float] = Field(None, gt=0)
+    participants_count: Optional[int] = Field(None, ge=0)
     max_participants: Optional[int] = Field(None, gt=0, le=1000)
     location: Optional[str] = Field(None, min_length=1, max_length=255)
-    start_date: Optional[datetime] = None
-    end_date: Optional[datetime] = None
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
     is_active: Optional[bool] = None
 
 class ChallengeResponse(ChallengeBase):
@@ -51,26 +54,7 @@ class ChallengeResponse(ChallengeBase):
     updated_at: Optional[Union[datetime, str]] = None
     creator_id: Optional[str] = None
 
-    # Timestamp fields are handled flexibly to avoid validation errors
 
-class ParticipantCreate(BaseModel):
-    code_name: str = Field(..., min_length=1, max_length=50)
-    avatar_url: Optional[str] = None
-    stake_amount: float = Field(..., gt=0)
-    user_id: Optional[str] = None
-
-class ParticipantResponse(BaseModel):
-    id: int
-    challenge_id: int
-    user_id: Optional[str]
-    code_name: str
-    avatar_url: Optional[str] = None
-    stake_amount: float
-    status: str
-    joined_at: Optional[Union[datetime, str]] = None
-    updated_at: Optional[Union[datetime, str]] = None
-
-# Helper function to validate challenge dates
 def validate_challenge_dates(start_date: str, end_date: str):
     try:
         start_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
@@ -103,11 +87,9 @@ def validate_challenge_dates(start_date: str, end_date: str):
 async def create_challenge(challenge: ChallengeCreate):
     """Create a new challenge"""
     try:
-        # Validate dates
         validate_challenge_dates(challenge.start_date, challenge.end_date)
         
-        # Prepare challenge data
-        challenge_data = challenge.dict(exclude={'track_coordinates'})
+        challenge_data = challenge.dict(exclude={'polyline'})
         challenge_data['participants_count'] = 0
         
         # Insert challenge
@@ -119,10 +101,10 @@ async def create_challenge(challenge: ChallengeCreate):
         challenge_id = result.data[0]['id']
         
         # Insert track coordinates if provided
-        if challenge.track_coordinates:
+        if challenge.polyline:
             track_data = {
                 'challenge_id': challenge_id,
-                'coordinates': challenge.track_coordinates
+                'polyline': challenge.polyline
             }
             supabase.table('tracks').insert(track_data).execute()
         
@@ -133,7 +115,7 @@ async def create_challenge(challenge: ChallengeCreate):
             raise HTTPException(status_code=409, detail="Challenge with this name already exists")
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/", response_model=List[ChallengeResponse])
+@router.get("/list", response_model=List[ChallengeResponse])
 async def get_challenges(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
@@ -186,30 +168,28 @@ async def get_challenge(challenge_id: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.put("/{challenge_id}", response_model=ChallengeResponse)
-async def update_challenge(challenge_id: int, challenge_update: ChallengeUpdate):
+@router.put("/", response_model=ChallengeResponse)
+async def update_challenge(request: ChallengeUpdate):
     """Update a challenge"""
     try:
         # Check if challenge exists
-        existing = supabase.table('challenges').select('*').eq('id', challenge_id).execute()
+        existing = supabase.table('challenges').select('*').eq('id', request.id).execute()
         if not existing.data:
             raise HTTPException(status_code=404, detail="Challenge not found")
         
         # Validate dates if both are provided
-        if challenge_update.start_date and challenge_update.end_date:
-            validate_challenge_dates(challenge_update.start_date, challenge_update.end_date)
+        if request.start_date and request.end_date:
+            validate_challenge_dates(request.start_date, request.end_date)
         
         # Update challenge
-        update_data = challenge_update.dict(exclude_unset=True)
-        result = supabase.table('challenges').update(update_data).eq('id', challenge_id).execute()
+        update_data = request.dict(exclude_unset=True)
+        result = supabase.table('challenges').update(update_data).eq('id', request.id).execute()
         
         if not result.data:
             raise HTTPException(status_code=500, detail="Failed to update challenge")
         
         return ChallengeResponse(**result.data[0])
         
-    except HTTPException:
-        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -235,45 +215,12 @@ async def delete_challenge(challenge_id: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/{challenge_id}/join", response_model=ParticipantResponse)
-async def join_challenge(challenge_id: int, participant: ParticipantCreate):
-    """Join a challenge as a participant"""
-    try:
-        # Check if challenge exists and is active
-        challenge = supabase.table('challenges').select('*').eq('id', challenge_id).execute()
-        if not challenge.data:
-            raise HTTPException(status_code=404, detail="Challenge not found")
-        
-        if not challenge.data[0]['is_active']:
-            raise HTTPException(status_code=400, detail="Challenge is not active")
-        
-        # Check if challenge is full
-        if challenge.data[0]['participants_count'] >= challenge.data[0]['max_participants']:
-            raise HTTPException(status_code=400, detail="Challenge is full")
-        
-        # Check if user is already participating
-        existing_participant = supabase.table('participants').select('*').eq('challenge_id', challenge_id).eq('user_id', participant.user_id).execute()
-        if existing_participant.data:
-            raise HTTPException(status_code=400, detail="Already participating in this challenge")
-        
-        # Create participant
-        participant_data = participant.dict()
-        participant_data['challenge_id'] = challenge_id
-        participant_data['status'] = 'joined'
-        
-        result = supabase.table('participants').insert(participant_data).execute()
-        
-        if not result.data:
-            raise HTTPException(status_code=500, detail="Failed to join challenge")
-        
-        return ParticipantResponse(**result.data[0])
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+@router.post("/{challenge_id}/join", response_model=ChallengeAttendeeResponse)
+async def join_challenge(challenge_id: int, profile_data: ChallengeAttendeeCreate):
+    """Join a challenge as a participant using profile_id"""
+    return await create_challenge_attendee(challenge_id, profile_data)
 
-@router.get("/{challenge_id}/participants", response_model=List[ParticipantResponse])
+@router.get("/{challenge_id}/participants", response_model=List[ChallengeAttendeeResponse])
 async def get_challenge_participants(challenge_id: int):
     """Get all participants for a specific challenge"""
     try:
@@ -283,12 +230,12 @@ async def get_challenge_participants(challenge_id: int):
             raise HTTPException(status_code=404, detail="Challenge not found")
         
         # Get participants
-        result = supabase.table('participants').select('*').eq('challenge_id', challenge_id).execute()
+        result = supabase.table('challenge_attendees').select('*').eq('challenge_id', challenge_id).execute()
         
         if not result.data:
             return []
         
-        return [ParticipantResponse(**participant) for participant in result.data]
+        return [ChallengeAttendeeResponse(**participant) for participant in result.data]
         
     except HTTPException:
         raise
