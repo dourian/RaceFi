@@ -1,6 +1,6 @@
 import { StyleSheet, View } from 'react-native';
 import Map from '../../components/map';
-import { decodePolyline } from '../helpers/polyline';
+import { decodePolyline } from '../../src/helpers/polyline';
 
 export default function MapTest() {
 

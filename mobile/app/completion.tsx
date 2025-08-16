@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Stack } from 'expo-router';
 import { colors, spacing, typography, shadows } from './theme';
-import { RunCalculationService } from './services/runCalculationService';
+import { RunCalculationService } from '../src/services/runCalculationService';
 
 export default function CompletionPage() {
   const router = useRouter();

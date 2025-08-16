@@ -1,4 +1,6 @@
 import { RunCalculationService } from './runCalculationService';
+import { timeManager } from '../../constants/timeManager';
+import { Challenge } from '../../constants/types';
 
 export interface ChallengeRunData {
   coords: { latitude: number; longitude: number; timestamp: number }[];
@@ -10,11 +12,12 @@ export interface ChallengeRunData {
 
 export interface UserChallengeStatus {
   challengeId: string;
-  status: 'not-joined' | 'joined' | 'in-progress' | 'completed' | 'winner';
+  status: 'not-joined' | 'joined' | 'in-progress' | 'completed' | 'winner' | 'cashOut';
   joinedAt?: Date;
   runData?: ChallengeRunData;
   isWinner?: boolean;
   winnerRewards?: number; // USDC reward amount
+  cashedOutAt?: Date; // When the user cashed out their winnings
 }
 
 export interface ChallengeFormattedData {
@@ -193,6 +196,8 @@ export class ChallengeService {
         return 'Challenge Completed!';
       case 'winner':
         return '🏆 Challenge Winner!';
+      case 'cashOut':
+        return '💰 Winnings Cashed Out';
       default:
         return 'Challenge Status';
     }
@@ -202,14 +207,21 @@ export class ChallengeService {
    * Simulate challenge ending with user as winner (for testing)
    * @param existingStatus Current challenge status
    * @param prizePoolAmount Prize pool amount in USDC
+   * @param challenge Challenge object to check expiration
    * @returns Updated status as winner
    */
   static simulateWinner(
     existingStatus: UserChallengeStatus,
-    prizePoolAmount: number
+    prizePoolAmount: number,
+    challenge: Challenge
   ): UserChallengeStatus {
     if (existingStatus.status !== 'completed') {
       throw new Error('Can only make completed challenges into winners');
+    }
+
+    // CRITICAL: Winner cannot be determined until the race is expired
+    if (!this.isRaceExpired(challenge)) {
+      throw new Error('Winner cannot be determined until the race is expired');
     }
 
     return {
@@ -275,5 +287,56 @@ export class ChallengeService {
    */
   static isWinner(status: UserChallengeStatus): boolean {
     return status.isWinner === true || status.status === 'winner';
+  }
+
+  /**
+   * Cash out winnings from a completed challenge
+   * @param existingStatus Current challenge status
+   * @returns Updated status as cashed out
+   */
+  static cashOut(
+    existingStatus: UserChallengeStatus
+  ): UserChallengeStatus {
+    if (existingStatus.status !== 'winner') {
+      throw new Error('Can only cash out from winner status');
+    }
+
+    return {
+      ...existingStatus,
+      status: 'cashOut',
+      cashedOutAt: new Date(),
+    };
+  }
+
+  /**
+   * Check if a challenge has been cashed out
+   * @param status Current challenge status
+   * @returns Whether the challenge winnings have been cashed out
+   */
+  static isCashedOut(status: UserChallengeStatus): boolean {
+    return status.status === 'cashOut';
+  }
+
+  /**
+   * Check if a race is expired (ended) based on the current app time
+   * @param challenge Challenge object with endDate
+   * @returns Whether the race has expired
+   */
+  static isRaceExpired(challenge: Challenge): boolean {
+    return timeManager.isExpired(challenge.endDate);
+  }
+
+  /**
+   * Check if a race is expired by challengeId (requires challenge lookup)
+   * @param challengeId Challenge ID
+   * @param challenges Array of challenges to lookup from
+   * @returns Whether the race has expired
+   */
+  static isRaceExpiredById(challengeId: string, challenges: Challenge[]): boolean {
+    const challenge = challenges.find(c => c.id === challengeId);
+    if (!challenge) {
+      throw new Error(`Challenge with id ${challengeId} not found`);
+    }
+    return this.isRaceExpired(challenge);
   }
 }

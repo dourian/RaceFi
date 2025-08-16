@@ -7,7 +7,7 @@ This guide shows how to migrate from mock data to live API using the new structu
 The app now uses a layered approach:
 
 1. **Constants Layer** (`/constants/`) - Mock data and types
-2. **Service Layer** (`/app/services/apiService.ts`) - Data access abstraction
+2. **Service Layer** (`/src/services/apiService.ts`) - Data access abstraction
 3. **Component Layer** - React components that consume data
 
 ## Migration Steps
@@ -30,7 +30,7 @@ Use the ApiService:
 
 ```typescript
 // NEW: Using ApiService
-import { ApiService } from '../services/apiService';
+import { ApiService } from '../src/services/apiService';
 import { Challenge } from '../../constants/types';
 
 export default function MyComponent() {
@@ -53,7 +53,7 @@ export default function MyComponent() {
 When your API is ready, simply update the ApiService methods:
 
 ```typescript
-// In app/services/apiService.ts
+// In src/services/apiService.ts
 
 static async getChallenges(): Promise<Challenge[]> {
   // Replace this mock implementation:

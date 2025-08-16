@@ -13,25 +13,158 @@ import { challenges } from "../../constants";
 import { colors, spacing, typography, shadows } from "../theme";
 import { useChallenge } from "../contexts/challengeContext";
 import StaticRoutePreview from "../../components/StaticRoutePreview";
+import { useAppTime, getCurrentAppTime } from "../../constants/timeManager";
+import React, { useState, useMemo } from 'react';
+
+type FilterType = 'nearby' | 'all';
 
 export default function BrowseScreen() {
   const { getChallengeStatus } = useChallenge();
+  const [filter, setFilter] = useState<FilterType>('nearby');
+  const currentAppTime = useAppTime(); // Use centralized app time that updates when time changes
+
+  // Filter challenges based on current filter
+  const filteredChallenges = useMemo(() => {
+    if (filter === 'nearby') {
+      // Show only active challenges (not expired)
+      return challenges.filter(challenge => challenge.endDate.getTime() > currentAppTime);
+    }
+    // Show all challenges including expired ones
+    return challenges;
+  }, [filter, currentAppTime]);
+
+  // Check if a challenge is expired
+  const isExpired = (challenge: any) => {
+    return challenge.endDate.getTime() < currentAppTime;
+  };
+
+  // Get expiry status and text
+  const getExpiryInfo = (challenge: any, challengeStatus: any) => {
+    const now = currentAppTime;
+    const endTime = challenge.endDate.getTime();
+    const timeDiff = endTime - now;
+    
+    // If user has completed the challenge (won, completed, or cashed out), show completed status
+    if (challengeStatus.status === 'winner') {
+      return { text: "Challenge won!", color: "#DAA520", urgent: false };
+    } else if (challengeStatus.status === 'cashOut') {
+      return { text: "Winnings cashed out", color: "#22c55e", urgent: false };
+    } else if (challengeStatus.status === 'completed') {
+      return { text: "Challenge completed", color: "#22c55e", urgent: false };
+    } else if (challengeStatus.status === 'in-progress') {
+      return { text: "Currently running", color: "#f59e0b", urgent: false };
+    }
+    
+    // For non-participated or joined challenges, show time-based info
+    if (timeDiff < 0) {
+      return { text: "Expired", color: "#6b7280", urgent: false };
+    }
+    
+    const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((timeDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
+    
+    // Running window is the last 7 days before deadline
+    const isInRunningWindow = days <= 7;
+    
+    if (days > 7) {
+      // Still in sign-up only period
+      const runningStartDays = days - 7;
+      return { 
+        text: `Running starts in ${runningStartDays} days`, 
+        color: "#6b7280", 
+        urgent: false 
+      };
+    } else if (days > 1) {
+      // In running window
+      return { 
+        text: `${days} days to run`, 
+        color: "#22c55e", 
+        urgent: false 
+      };
+    } else if (days === 1) {
+      return { 
+        text: `Final day to run`, 
+        color: "#f59e0b", 
+        urgent: true 
+      };
+    } else if (hours > 1) {
+      return { 
+        text: `${hours}h to run`, 
+        color: "#ef4444", 
+        urgent: true 
+      };
+    } else {
+      return { 
+        text: `${minutes}m to run`, 
+        color: "#ef4444", 
+        urgent: true 
+      };
+    }
+  };
 
   return (
     <SafeAreaView
       style={styles.container}
-      edges={["top", "left", "right", "bottom"]}
+      edges={["top", "left", "right"]}
     >
-      <Text style={styles.title}>Nearby Challenges</Text>
+      {/* Header with title and filter buttons */}
+      <View style={styles.header}>
+        <Text style={styles.title}>
+          {filter === 'nearby' ? 'Nearby Challenges' : 'All Challenges'}
+        </Text>
+        <View style={styles.filterButtons}>
+          <Pressable
+            style={[
+              styles.filterButton,
+              filter === 'nearby' && styles.filterButtonActive
+            ]}
+            onPress={() => setFilter('nearby')}
+          >
+            <Ionicons 
+              name="location" 
+              size={16} 
+              color={filter === 'nearby' ? 'white' : '#374151'} 
+            />
+            <Text style={[
+              styles.filterButtonText,
+              filter === 'nearby' && styles.filterButtonTextActive
+            ]}>
+              Nearby
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[
+              styles.filterButton,
+              filter === 'all' && styles.filterButtonActive
+            ]}
+            onPress={() => setFilter('all')}
+          >
+            <Ionicons 
+              name="list" 
+              size={16} 
+              color={filter === 'all' ? 'white' : '#374151'} 
+            />
+            <Text style={[
+              styles.filterButtonText,
+              filter === 'all' && styles.filterButtonTextActive
+            ]}>
+              View All
+            </Text>
+          </Pressable>
+        </View>
+      </View>
       <FlatList
-        data={challenges}
+        data={filteredChallenges}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
+        style={styles.list}
         renderItem={({ item }) => {
           const challengeStatus = getChallengeStatus(item.id);
 
           // Get badge text and style based on status
           const getBadgeInfo = () => {
+            // Check user's status first - this takes priority over expiry
             switch (challengeStatus.status) {
               case "winner":
                 return {
@@ -39,6 +172,13 @@ export default function BrowseScreen() {
                   icon: "trophy",
                   backgroundColor: "rgba(255, 215, 0, 0.15)",
                   color: "#DAA520",
+                };
+              case "cashOut":
+                return {
+                  text: "💰 Cashed Out",
+                  icon: "card",
+                  backgroundColor: "rgba(34, 197, 94, 0.15)",
+                  color: "#22c55e",
                 };
               case "completed":
                 return {
@@ -55,6 +195,15 @@ export default function BrowseScreen() {
                   color: "#f59e0b",
                 };
               case "joined":
+                // If joined but challenge is expired, show that it's too late
+                if (isExpired(item)) {
+                  return {
+                    text: "Missed",
+                    icon: "time-outline",
+                    backgroundColor: "rgba(107, 114, 128, 0.1)",
+                    color: "#6b7280",
+                  };
+                }
                 return {
                   text: "Joined",
                   icon: "checkmark-circle",
@@ -62,6 +211,15 @@ export default function BrowseScreen() {
                   color: "#22c55e",
                 };
               default:
+                // Only show "Expired" if user hasn't participated and it's expired
+                if (isExpired(item)) {
+                  return {
+                    text: "Expired",
+                    icon: "time-outline",
+                    backgroundColor: "rgba(107, 114, 128, 0.1)",
+                    color: "#6b7280",
+                  };
+                }
                 return null;
             }
           };
@@ -104,6 +262,21 @@ export default function BrowseScreen() {
                             color={colors.textMuted}
                           />
                           <Text style={styles.location}>{item.location}</Text>
+                        </View>
+                        {/* Expiry Time */}
+                        <View style={styles.expiryRow}>
+                          <Ionicons
+                            name="time-outline"
+                            size={12}
+                            color={getExpiryInfo(item, challengeStatus).color}
+                          />
+                          <Text style={[
+                            styles.expiryText,
+                            { color: getExpiryInfo(item, challengeStatus).color },
+                            getExpiryInfo(item, challengeStatus).urgent && styles.expiryTextUrgent
+                          ]}>
+                            {getExpiryInfo(item, challengeStatus).text}
+                          </Text>
                         </View>
                       </View>
                       {badgeInfo && (
@@ -176,15 +349,45 @@ export default function BrowseScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: spacing.lg,
-    paddingTop: spacing.xl,
     backgroundColor: colors.background,
+  },
+  header: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.xl,
+    marginBottom: spacing.lg,
   },
   title: {
     ...typography.title,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
     fontSize: 24,
     fontWeight: "bold",
+  },
+  filterButtons: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  filterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: 20,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    gap: spacing.xs,
+  },
+  filterButtonActive: {
+    backgroundColor: '#f97316', // Orange color
+    borderColor: '#f97316',
+  },
+  filterButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#374151', // Darker text for better readability
+  },
+  filterButtonTextActive: {
+    color: 'white',
   },
   cardContainer: {
     borderRadius: 16,
@@ -232,6 +435,19 @@ const styles = StyleSheet.create({
   location: {
     ...typography.meta,
     fontSize: 12,
+  },
+  expiryRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 2,
+  },
+  expiryText: {
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  expiryTextUrgent: {
+    fontWeight: "600",
   },
   joinedBadge: {
     flexDirection: "row",
@@ -292,8 +508,13 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontWeight: "500",
   },
+  list: {
+    flex: 1,
+  },
   listContent: {
-    gap: spacing.xl,
+    paddingHorizontal: spacing.lg,
+    paddingTop: 0,
     paddingBottom: spacing.xl,
+    gap: spacing.xl,
   },
 });

@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import Map from './map';
-import { decodePolyline } from '../app/helpers/polyline';
+import { decodePolyline } from '../src/helpers/polyline';
 
 interface StaticRoutePreviewProps {
   challengeId: string;

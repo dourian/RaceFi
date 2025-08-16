@@ -25,20 +25,22 @@ import {
 } from "../../components/ui";
 import React, { useState, useEffect } from "react";
 import { useChallenge } from "../contexts/challengeContext";
-import { ChallengeService } from "../services/challengeService";
-import { RunCalculationService } from "../services/runCalculationService";
+import { ChallengeService } from "../../src/services/challengeService";
+import { RunCalculationService } from "../../src/services/runCalculationService";
+import LeaderboardService from "../../src/services/leaderboardService";
 import StaticRoutePreview from "../../components/StaticRoutePreview";
 
 export default function ChallengeDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const challenge = challenges.find((c) => c.id === id);
-  const { getChallengeStatus, joinChallenge, startChallengeRun } = useChallenge();
+  const { getChallengeStatus, joinChallenge, startChallengeRun, cashOutWinnings } = useChallenge();
   const [timeLeft, setTimeLeft] = useState(5 * 24 * 60 * 60 * 1000); // 5 days in milliseconds
-  
+
   const challengeStatus = getChallengeStatus(id || '');
   const isJoined = challengeStatus.status !== 'not-joined';
   const isCompleted = challengeStatus.status === 'completed';
   const isWinner = challengeStatus.status === 'winner';
+  const isCashedOut = challengeStatus.status === 'cashOut';
   const isInProgress = challengeStatus.status === 'in-progress';
 
   // Countdown timer effect
@@ -76,6 +78,9 @@ export default function ChallengeDetail() {
       </SafeAreaView>
     );
   }
+
+  // Generate leaderboard data using the service
+  const leaderboardData = LeaderboardService.generateLeaderboard(challenge, challengeStatus);
 
   return (
     <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
@@ -121,7 +126,7 @@ export default function ChallengeDetail() {
           </Card>
 
           {/* Route Map - Only show for non-completed challenges */}
-          {!isCompleted && !isWinner && (
+          {!isCompleted && !isWinner && !isCashedOut && (
             <Card style={styles.cardSpacing}>
               <CardHeader title="Route Map" />
               <CardContent>
@@ -175,6 +180,49 @@ export default function ChallengeDetail() {
                 </Text>
               </CardContent>
             </Card>
+          ) : isCashedOut ? (
+            <Card style={{ ...styles.cardSpacing, ...styles.cashedOutCard }}>
+              <CardHeader
+                title="💰 Winnings Cashed Out"
+                icon={<Ionicons name="wallet" size={18} color="#10b981" />}
+              />
+              <CardContent>
+                <Text style={styles.cashedOutText}>
+                  ✅ You've successfully cashed out your {challengeStatus.winnerRewards} USDC winnings!
+                </Text>
+                {challengeStatus.runData && (
+                  <View style={styles.resultStats}>
+                    <View style={styles.resultItem}>
+                      <Text style={styles.cashedOutValue}>
+                        {RunCalculationService.formatDuration(challengeStatus.runData.duration)}
+                      </Text>
+                      <Text style={styles.resultLabel}>Winning Time</Text>
+                    </View>
+                    <View style={styles.resultItem}>
+                      <Text style={styles.cashedOutValue}>
+                        {RunCalculationService.formatDistance(challengeStatus.runData.distance)}
+                      </Text>
+                      <Text style={styles.resultLabel}>Distance</Text>
+                    </View>
+                    <View style={styles.resultItem}>
+                      <Text style={styles.cashedOutValue}>
+                        {challengeStatus.runData.pace}
+                      </Text>
+                      <Text style={styles.resultLabel}>Pace/km</Text>
+                    </View>
+                  </View>
+                )}
+                <Text style={styles.cashedOutNote}>
+                  Funds have been transferred to your wallet. Thanks for participating! 💚
+                </Text>
+
+                {challengeStatus.cashedOutAt && (
+                  <Text style={styles.cashedOutDate}>
+                    Cashed out on {challengeStatus.cashedOutAt.toLocaleDateString()}
+                  </Text>
+                )}
+              </CardContent>
+            </Card>
           ) : isWinner ? (
             <Card style={{ ...styles.cardSpacing, ...styles.winnerCard }}>
               <CardHeader
@@ -210,17 +258,28 @@ export default function ChallengeDetail() {
                 <Text style={styles.winnerNote}>
                   Your reward has been added to your account! 🎊
                 </Text>
-                
-                <Pressable style={styles.cashOutButton} onPress={() => {
-                  Alert.alert(
-                    'Cash Out',
-                    `Ready to cash out your ${challengeStatus.winnerRewards} USDC winnings?`,
-                    [
-                      { text: 'Cancel', style: 'cancel' },
-                      { text: 'Cash Out', onPress: () => Alert.alert('Success', 'Cashout initiated! Funds will be transferred to your wallet.') }
-                    ]
-                  );
-                }}>
+
+                <Pressable 
+                  style={styles.cashOutButton} 
+                  onPress={() => {
+                    Alert.alert(
+                      'Cash Out',
+                      `Ready to cash out your ${challengeStatus.winnerRewards} USDC winnings?`,
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        { 
+                          text: 'Cash Out', 
+                          onPress: () => {
+                            if (id) {
+                              cashOutWinnings(id);
+                              Alert.alert('Success', 'Cashout initiated! Funds will be transferred to your wallet.');
+                            }
+                          }
+                        }
+                      ]
+                    );
+                  }}
+                >
                   <Ionicons name="wallet" size={16} color="white" style={{ marginRight: 8 }} />
                   <Text style={styles.cashOutButtonText}>Cash Out {challengeStatus.winnerRewards} USDC</Text>
                 </Pressable>
@@ -323,7 +382,7 @@ export default function ChallengeDetail() {
           )}
 
           {/* Countdown Timer - Only show for non-completed challenges */}
-          {!isCompleted && !isWinner && (
+          {!isCompleted && !isWinner && !isCashedOut && (
             <Card style={styles.cardSpacing}>
               <CardHeader
                 title="Time Remaining"
@@ -344,142 +403,106 @@ export default function ChallengeDetail() {
           {/* Enhanced Participants List / Leaderboard */}
           <Card style={styles.cardSpacing}>
             <CardHeader
-              title={isCompleted || isWinner ? "Final Rankings" : `Participants (${challenge.participants}/${challenge.maxParticipants})`}
-              icon={<Ionicons name={isCompleted || isWinner ? "trophy" : "people"} size={18} color={isCompleted || isWinner ? "#DAA520" : colors.text} />}
+              title={LeaderboardService.getLeaderboardTitle(
+                leaderboardData.isCompleted,
+                leaderboardData.totalParticipants,
+                challenge.maxParticipants
+              )}
+              icon={
+                <Ionicons 
+                  name={LeaderboardService.getLeaderboardIcon(leaderboardData.isCompleted) as any} 
+                  size={18} 
+                  color={LeaderboardService.getLeaderboardIconColor(leaderboardData.isCompleted)} 
+                />
+              }
             />
             <CardContent>
-              {isCompleted || isWinner ? (
-                // Show rankings for completed challenges
+              {leaderboardData.isCompleted ? (
+                // Show final rankings
                 <View>
-                  {/* Winner - Always show first */}
-                  {isWinner && (
-                    <View style={[styles.rankingRow, styles.winnerRow]}>
-                      <View style={styles.rankingPosition}>
-                        <Text style={[styles.rankingNumber, styles.winnerText]}>👑</Text>
+                  {leaderboardData.entries.map((entry, index) => {
+                    const isWinnerEntry = entry.status === 'winner' || entry.status === 'cashOut';
+                    const showPrize = isWinnerEntry && entry.prizeAmount;
+                    
+                    return (
+                      <View 
+                        key={entry.id} 
+                        style={[
+                          styles.rankingRow, 
+                          isWinnerEntry ? styles.winnerRow : null
+                        ]}
+                      >
+                        <View style={styles.rankingPosition}>
+                          {isWinnerEntry ? (
+                            <Text style={[styles.rankingNumber, styles.winnerText]}>👑</Text>
+                          ) : (
+                            <Text style={styles.rankingNumber}>
+                              {entry.ranking ? `#${entry.ranking}` : '-'}
+                            </Text>
+                          )}
+                        </View>
+                        {entry.avatar && <Avatar source={entry.avatar} size={28} />}
+                        <View style={styles.rankingInfo}>
+                          <Text style={[
+                            styles.rankingName, 
+                            isWinnerEntry ? styles.winnerText : null
+                          ]}>
+                            {entry.name}
+                          </Text>
+                          <View style={styles.rankingDetails}>
+                            <Text style={styles.rankingStatus}>
+                              {entry.status === 'completed' ? 'Done' : 
+                               entry.status === 'joined' ? 'Joined' : 
+                               entry.status === 'cashOut' ? 'Cashed Out' : 'Winner'}
+                            </Text>
+                            {entry.runTime && (
+                              <Text style={styles.rankingTime}> • {entry.runTime}</Text>
+                            )}
+                          </View>
+                        </View>
+                        {showPrize && (
+                          <View style={styles.prizeIndicator}>
+                            <Text style={styles.prizeText}>{entry.prizeAmount} USDC</Text>
+                          </View>
+                        )}
                       </View>
-                      <View style={styles.rankingInfo}>
-                        <Text style={[styles.rankingName, styles.winnerText]}>You</Text>
-                        <Text style={styles.rankingStatus}>Done</Text>
-                      </View>
-                      <View style={styles.prizeIndicator}>
-                        <Text style={styles.prizeText}>{challenge.prizePool} USDC</Text>
-                      </View>
-                    </View>
-                  )}
-                  
-                  {/* Challenge Creator */}
-                  <View style={styles.rankingRow}>
-                    <View style={styles.rankingPosition}>
-                      <Text style={styles.rankingNumber}>#{isWinner ? "2" : "1"}</Text>
-                    </View>
-                    <Avatar source={challenge.creator.avatar} size={28} />
-                    <View style={styles.rankingInfo}>
-                      <Text style={styles.rankingName}>{challenge.creator.name}</Text>
-                      <Text style={styles.rankingStatus}>Done</Text>
-                    </View>
-                  </View>
-                  
-                  {/* Other Participants */}
-                  {challenge.participantsList
-                    .filter(p => p.status === "completed")
-                    .slice(0, 3)
-                    .map((participant, index) => (
-                    <View key={index} style={styles.rankingRow}>
-                      <View style={styles.rankingPosition}>
-                        <Text style={styles.rankingNumber}>#{isWinner ? index + 3 : index + 2}</Text>
-                      </View>
-                      <Avatar source={participant.avatar} size={28} />
-                      <View style={styles.rankingInfo}>
-                        <Text style={styles.rankingName}>{participant.name}</Text>
-                        <Text style={styles.rankingStatus}>Done</Text>
-                      </View>
-                    </View>
-                  ))}
-                  
-                  {/* Show other joined participants who haven't completed */}
-                  {challenge.participantsList
-                    .filter(p => p.status === "joined")
-                    .slice(0, 2)
-                    .map((participant, index) => (
-                    <View key={`joined-${index}`} style={styles.rankingRow}>
-                      <View style={styles.rankingPosition}>
-                        <Text style={styles.rankingNumber}>-</Text>
-                      </View>
-                      <Avatar source={participant.avatar} size={28} />
-                      <View style={styles.rankingInfo}>
-                        <Text style={styles.rankingName}>{participant.name}</Text>
-                        <Text style={styles.rankingStatus}>Joined</Text>
-                      </View>
-                    </View>
-                  ))}
-                  
-                  {/* Non-winner user (completed but didn't win) */}
-                  {isCompleted && !isWinner && (
-                    <View style={styles.rankingRow}>
-                      <View style={styles.rankingPosition}>
-                        <Text style={styles.rankingNumber}>#4</Text>
-                      </View>
-                      <View style={styles.rankingInfo}>
-                        <Text style={styles.rankingName}>You</Text>
-                        <Text style={styles.rankingStatus}>Done</Text>
-                      </View>
-                    </View>
-                  )}
+                    );
+                  })}
                   
                   <Text style={styles.rankingNote}>
-                    {isWinner ? "🎉 Congratulations on winning!" : "Challenge completed! Thanks for participating."}
+                    {leaderboardData.message}
                   </Text>
                 </View>
               ) : (
-                // Show regular participants for ongoing challenges
+                // Show participants list for ongoing challenges
                 <View>
-                  {/* Challenge Creator */}
-                  <View style={styles.creatorRow}>
-                    <Avatar source={challenge.creator.avatar} size={32} />
-                    <View style={styles.participantInfo}>
-                      <Text style={styles.participantName}>
-                        {challenge.creator.name}
-                      </Text>
-                      <Text style={styles.participantStatus}>
-                        Creator • Done
-                      </Text>
-                    </View>
-                    <Badge variant="outline">
-                      <Text>Creator</Text>
-                    </Badge>
-                  </View>
-
-                  <Separator />
-
-                  {/* Other Participants */}
-                  {challenge.participantsList.map((participant, index) => (
-                    <View key={index} style={styles.participantRow}>
-                      <Avatar source={participant.avatar} size={32} />
-                      <View style={styles.participantInfo}>
-                        <Text style={styles.participantName}>
-                          {participant.name}
-                        </Text>
-                        <Text style={styles.participantStatus}>
-                          {participant.status === "completed"
-                            ? "Done"
-                            : "Joined"}
-                        </Text>
+                  {leaderboardData.entries.map((entry, index) => {
+                    const isCreator = entry.id === 'creator';
+                    return (
+                      <View key={entry.id}>
+                        {index === 1 && <Separator />}
+                        <View style={isCreator ? styles.creatorRow : styles.participantRow}>
+                          {entry.avatar && <Avatar source={entry.avatar} size={32} />}
+                          <View style={styles.participantInfo}>
+                            <Text style={styles.participantName}>
+                              {entry.name}
+                            </Text>
+                            <Text style={styles.participantStatus}>
+                              {isCreator ? 'Creator • Done' : 
+                               entry.status === 'completed' ? 'Done' : 'Joined'}
+                            </Text>
+                          </View>
+                          <Badge variant={isCreator ? 'outline' : 
+                                         entry.status === 'completed' ? 'default' : 'outline'}>
+                            <Text>
+                              {isCreator ? 'Creator' : 
+                               entry.status === 'completed' ? 'Done' : 'Joined'}
+                            </Text>
+                          </Badge>
+                        </View>
                       </View>
-                      <Badge
-                        variant={
-                          participant.status === "completed"
-                            ? "default"
-                            : "outline"
-                        }
-                      >
-                        <Text>
-                          {participant.status === "completed"
-                            ? "Done"
-                            : "Joined"}
-                        </Text>
-                      </Badge>
-                    </View>
-                  ))}
+                    );
+                  })}
                 </View>
               )}
             </CardContent>
@@ -784,6 +807,38 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
   },
+  // Cashed out challenge card
+  cashedOutCard: {
+    borderColor: "#10b981",
+    borderWidth: 2,
+    backgroundColor: "rgba(16, 185, 129, 0.05)",
+  },
+  cashedOutText: {
+    ...typography.body,
+    marginBottom: spacing.lg,
+    color: "#059669",
+    fontWeight: "600",
+  },
+  cashedOutValue: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#10b981",
+  },
+  cashedOutNote: {
+    ...typography.meta,
+    textAlign: "center",
+    fontStyle: "italic",
+    color: "#059669",
+    fontWeight: "500",
+    marginBottom: spacing.md,
+  },
+  cashedOutDate: {
+    ...typography.meta,
+    textAlign: "center",
+    fontSize: 12,
+    color: colors.textMuted,
+    fontStyle: "italic",
+  },
   // Ranking/Leaderboard styles
   rankingRow: {
     flexDirection: "row",
@@ -818,15 +873,18 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: colors.text,
   },
+  rankingDetails: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 2,
+  },
   rankingTime: {
     fontSize: 12,
     color: colors.textMuted,
-    marginTop: 2,
   },
   rankingStatus: {
     fontSize: 12,
     color: colors.textMuted,
-    marginTop: 2,
   },
   prizeIndicator: {
     backgroundColor: "#DAA520",
