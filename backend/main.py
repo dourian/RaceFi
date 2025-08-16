@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from routes import challenge, participants, runs, tracks, map
+from routes import challenge, participants, runs, tracks, map, dimension
 
 app = FastAPI(
     title="RaceFi API",
@@ -13,6 +13,7 @@ app.include_router(participants.router)
 app.include_router(runs.router)
 app.include_router(tracks.router)
 app.include_router(map.router)
+app.include_router(dimension.router)
 
 @app.get("/")
 def read_root():
