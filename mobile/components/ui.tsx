@@ -1,12 +1,24 @@
-import { ReactNode } from 'react';
-import { View, Text, StyleSheet, Image, ViewStyle } from 'react-native';
-import { colors, spacing, typography, shadows } from '../app/theme';
+import { ReactNode } from "react";
+import { View, Text, StyleSheet, Image, ViewStyle, TextStyle } from "react-native";
+import { colors, spacing, typography, shadows } from "../app/theme";
 
-export function Card({ children, style }: { children: ReactNode; style?: ViewStyle }) {
+export function Card({
+  children,
+  style,
+}: {
+  children: ReactNode;
+  style?: ViewStyle;
+}) {
   return <View style={[styles.card, style]}>{children}</View>;
 }
 
-export function CardHeader({ title, icon }: { title: string; icon?: ReactNode }) {
+export function CardHeader({
+  title,
+  icon,
+}: {
+  title: string;
+  icon?: ReactNode;
+}) {
   return (
     <View style={styles.headerRow}>
       {icon ? <View style={{ marginRight: spacing.sm }}>{icon}</View> : null}
@@ -21,7 +33,7 @@ export function CardContent({ children }: { children: ReactNode }) {
 
 export function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <View style={{ alignItems: 'center' }}>
+    <View style={{ alignItems: "center" }}>
       <Text style={styles.statValue}>{value}</Text>
       <Text style={styles.statLabel}>{label}</Text>
     </View>
@@ -29,19 +41,116 @@ export function Stat({ label, value }: { label: string; value: string }) {
 }
 
 export function Avatar({ source, size = 32 }: { source: any; size?: number }) {
-  return <Image source={source} style={{ width: size, height: size, borderRadius: size / 2 }} />;
+  return (
+    <Image
+      source={source}
+      style={{ width: size, height: size, borderRadius: size / 2 }}
+    />
+  );
+}
+
+export function Badge({ 
+  children, 
+  variant = "default", 
+  style 
+}: { 
+  children: ReactNode; 
+  variant?: "default" | "secondary" | "outline";
+  style?: ViewStyle;
+}) {
+  const badgeStyle = variant === "default" 
+    ? styles.badgeDefault 
+    : variant === "secondary" 
+    ? styles.badgeSecondary 
+    : styles.badgeOutline;
+  
+  const textStyle = variant === "outline" 
+    ? styles.badgeTextOutline 
+    : styles.badgeText;
+    
+  return (
+    <View style={[badgeStyle, style]}>
+      <Text style={textStyle}>{children}</Text>
+    </View>
+  );
+}
+
+export function Progress({ 
+  value, 
+  style 
+}: { 
+  value: number; 
+  style?: ViewStyle;
+}) {
+  return (
+    <View style={[styles.progressContainer, style]}>
+      <View style={[styles.progressBar, { width: `${value}%` }]} />
+    </View>
+  );
+}
+
+export function Separator({ style }: { style?: ViewStyle }) {
+  return <View style={[styles.separator, style]} />;
 }
 
 const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
     borderRadius: 12,
-    padding: spacing.md,
+    padding: spacing.lg,
     ...shadows.card,
   },
-  headerRow: { flexDirection: 'row', alignItems: 'center' },
-  headerTitle: { ...typography.h2 },
-  statValue: { fontSize: 18, fontWeight: '700', color: colors.accentStrong },
+  headerRow: { flexDirection: "row", alignItems: "center" },
+  headerTitle: { ...typography.h2, fontWeight: "bold" },
+  statValue: {
+    fontSize: 18,
+    fontWeight: "700" as "bold",
+    color: colors.accentStrong,
+  },
   statLabel: { ...typography.meta },
+  badgeDefault: {
+    backgroundColor: colors.accentStrong,
+    borderRadius: 12,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+  },
+  badgeSecondary: {
+    backgroundColor: colors.backgroundMuted,
+    borderRadius: 12,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+  },
+  badgeOutline: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: colors.backgroundMuted,
+    borderRadius: 12,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+  },
+  badgeText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  badgeTextOutline: {
+    color: colors.text,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  progressContainer: {
+    height: 8,
+    backgroundColor: colors.backgroundMuted,
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  progressBar: {
+    height: '100%',
+    backgroundColor: colors.accentStrong,
+  },
+  separator: {
+    height: 1,
+    backgroundColor: colors.backgroundMuted,
+    marginVertical: spacing.sm,
+  },
 });
-
