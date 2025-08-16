@@ -4,7 +4,7 @@ import { colors, typography } from "./theme";
 
 export default function RootLayout() {
   return (
-    <>
+    <AuthProvider>
       <StatusBar style="dark" backgroundColor={colors.background} />
       <Stack
         screenOptions={{
@@ -18,6 +18,6 @@ export default function RootLayout() {
         <Stack.Screen name="challenge/[id]" options={{ title: "Challenge" }} />
         <Stack.Screen name="record" options={{ title: "Record Run" }} />
       </Stack>
-    </>
+    </AuthProvider>
   );
 }
