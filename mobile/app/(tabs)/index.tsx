@@ -9,7 +9,7 @@ import {
   Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { challenges } from "../lib/mock";
+import { challenges } from "../../constants";
 import { colors, spacing, typography, shadows } from "../theme";
 import { useChallenge } from "../contexts/challengeContext";
 import StaticRoutePreview from "../../components/StaticRoutePreview";

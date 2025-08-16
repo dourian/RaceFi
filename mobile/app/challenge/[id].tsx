@@ -11,7 +11,7 @@ import {
   Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { challenges } from "../lib/mock";
+import { challenges } from "../../constants";
 import { colors, spacing, typography, shadows, borderRadius } from "../theme";
 import {
   Card,
@@ -351,58 +351,80 @@ export default function ChallengeDetail() {
               {isCompleted || isWinner ? (
                 // Show rankings for completed challenges
                 <View>
-                  {/* Your Position */}
-                  {(isWinner || isCompleted) && (
-                    <View style={[styles.rankingRow, isWinner && styles.winnerRow]}>
+                  {/* Winner - Always show first */}
+                  {isWinner && (
+                    <View style={[styles.rankingRow, styles.winnerRow]}>
                       <View style={styles.rankingPosition}>
-                        <Text style={[styles.rankingNumber, isWinner && styles.winnerText]}>
-                          {isWinner ? "👑" : "#2"}
-                        </Text>
+                        <Text style={[styles.rankingNumber, styles.winnerText]}>👑</Text>
                       </View>
                       <View style={styles.rankingInfo}>
-                        <Text style={[styles.rankingName, isWinner && styles.winnerText]}>You</Text>
-                        <Text style={styles.rankingTime}>
-                          {challengeStatus.runData ? 
-                            RunCalculationService.formatDuration(challengeStatus.runData.duration) : 
-                            "20:00"
-                          }
-                        </Text>
+                        <Text style={[styles.rankingName, styles.winnerText]}>You</Text>
+                        <Text style={styles.rankingStatus}>Done</Text>
                       </View>
-                      {isWinner && (
-                        <View style={styles.prizeIndicator}>
-                          <Text style={styles.prizeText}>{challenge.prizePool} USDC</Text>
-                        </View>
-                      )}
+                      <View style={styles.prizeIndicator}>
+                        <Text style={styles.prizeText}>{challenge.prizePool} USDC</Text>
+                      </View>
                     </View>
                   )}
                   
-                  {/* Other Rankings */}
+                  {/* Challenge Creator */}
                   <View style={styles.rankingRow}>
                     <View style={styles.rankingPosition}>
-                      <Text style={styles.rankingNumber}>#1</Text>
+                      <Text style={styles.rankingNumber}>#{isWinner ? "2" : "1"}</Text>
                     </View>
                     <Avatar source={challenge.creator.avatar} size={28} />
                     <View style={styles.rankingInfo}>
                       <Text style={styles.rankingName}>{challenge.creator.name}</Text>
-                      <Text style={styles.rankingTime}>{isWinner ? "20:15" : challenge.creator.time}</Text>
+                      <Text style={styles.rankingStatus}>Done</Text>
                     </View>
                   </View>
                   
+                  {/* Other Participants */}
                   {challenge.participantsList
                     .filter(p => p.status === "completed")
                     .slice(0, 3)
                     .map((participant, index) => (
                     <View key={index} style={styles.rankingRow}>
                       <View style={styles.rankingPosition}>
-                        <Text style={styles.rankingNumber}>#{isWinner ? index + 2 : index + 2}</Text>
+                        <Text style={styles.rankingNumber}>#{isWinner ? index + 3 : index + 2}</Text>
                       </View>
                       <Avatar source={participant.avatar} size={28} />
                       <View style={styles.rankingInfo}>
                         <Text style={styles.rankingName}>{participant.name}</Text>
-                        <Text style={styles.rankingTime}>{participant.time || "--:--"}</Text>
+                        <Text style={styles.rankingStatus}>Done</Text>
                       </View>
                     </View>
                   ))}
+                  
+                  {/* Show other joined participants who haven't completed */}
+                  {challenge.participantsList
+                    .filter(p => p.status === "joined")
+                    .slice(0, 2)
+                    .map((participant, index) => (
+                    <View key={`joined-${index}`} style={styles.rankingRow}>
+                      <View style={styles.rankingPosition}>
+                        <Text style={styles.rankingNumber}>-</Text>
+                      </View>
+                      <Avatar source={participant.avatar} size={28} />
+                      <View style={styles.rankingInfo}>
+                        <Text style={styles.rankingName}>{participant.name}</Text>
+                        <Text style={styles.rankingStatus}>Joined</Text>
+                      </View>
+                    </View>
+                  ))}
+                  
+                  {/* Non-winner user (completed but didn't win) */}
+                  {isCompleted && !isWinner && (
+                    <View style={styles.rankingRow}>
+                      <View style={styles.rankingPosition}>
+                        <Text style={styles.rankingNumber}>#4</Text>
+                      </View>
+                      <View style={styles.rankingInfo}>
+                        <Text style={styles.rankingName}>You</Text>
+                        <Text style={styles.rankingStatus}>Done</Text>
+                      </View>
+                    </View>
+                  )}
                   
                   <Text style={styles.rankingNote}>
                     {isWinner ? "🎉 Congratulations on winning!" : "Challenge completed! Thanks for participating."}
@@ -419,7 +441,7 @@ export default function ChallengeDetail() {
                         {challenge.creator.name}
                       </Text>
                       <Text style={styles.participantStatus}>
-                        Creator • {challenge.creator.time}
+                        Creator • Done
                       </Text>
                     </View>
                     <Badge variant="outline">
@@ -438,32 +460,22 @@ export default function ChallengeDetail() {
                           {participant.name}
                         </Text>
                         <Text style={styles.participantStatus}>
-                          {participant.status === "completed" && participant.time
-                            ? `Finished • ${participant.time}`
-                            : participant.status === "running" && participant.time
-                              ? `Running • ${participant.time}`
-                              : participant.status === "joined"
-                                ? "Joined"
-                                : participant.status || "No status"}
+                          {participant.status === "completed"
+                            ? "Done"
+                            : "Joined"}
                         </Text>
                       </View>
                       <Badge
                         variant={
                           participant.status === "completed"
                             ? "default"
-                            : participant.status === "running"
-                              ? "default"
-                              : "outline"
+                            : "outline"
                         }
                       >
                         <Text>
                           {participant.status === "completed"
                             ? "Done"
-                            : participant.status === "running"
-                              ? "Running"
-                              : participant.status === "joined"
-                                ? "Joined"
-                                : participant.status || "Status"}
+                            : "Joined"}
                         </Text>
                       </Badge>
                     </View>
@@ -807,6 +819,11 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   rankingTime: {
+    fontSize: 12,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  rankingStatus: {
     fontSize: 12,
     color: colors.textMuted,
     marginTop: 2,
