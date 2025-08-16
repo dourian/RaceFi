@@ -13,7 +13,13 @@
       "bundleIdentifier": "com.mastersuperd18.racefi",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSLocationWhenInUseUsageDescription": "RaceFi uses your location to track runs during a challenge."
+        "NSLocationWhenInUseUsageDescription": "RaceFi uses your location to track runs during a challenge.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "RaceFi uses your location to track runs during a challenge and provide accurate fitness tracking.",
+        "NSLocationAlwaysUsageDescription": "RaceFi uses your location to track runs during a challenge and provide accurate fitness tracking.",
+        "UIBackgroundModes": [
+          "location",
+          "background-processing"
+        ]
       }
     },
     "android": {
@@ -33,6 +39,12 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow RaceFi to use your location."
+        }
+      ],
       "expo-router"
     ],
     "experiments": {
