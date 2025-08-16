@@ -43,3 +43,182 @@
 - challenges should be stored as a contract on chain
 - one the run is complete, just record the run on chain using an oracle
 - use some sort of crypto for the payment 
+
+# App styles
+
+- it is based on strava, here is some css that can be used
+
+element.style {
+}
+.DzTRd:last-of-type {
+    margin-bottom: 0;
+}
+.DzTRd {
+    display: grid
+;
+    grid-auto-rows: 280px;
+    grid-gap: 15px;
+    grid-template-columns: repeat(auto-fill, minmax(286px, 1fr));
+    list-style-type: none !important;
+    margin-top: 12px;
+    padding-left: 0;
+}
+@media (max-width: 992px) {
+    ul {
+        padding-left: 24px;
+    }
+}
+ul, ol {
+    margin-top: 0;
+    margin-bottom: 9px;
+}
+ul, ol {
+    padding: 0;
+    list-style: none;
+}
+ul, ol {
+    margin-top: 0;
+    margin-bottom: 9px;
+}
+* {
+    box-sizing: border-box;
+}
+user agent stylesheet
+ul {
+    display: block;
+    list-style-type: disc;
+    margin-block-start: 1em;
+    margin-block-end: 1em;
+    padding-inline-start: 40px;
+    unicode-bidi: isolate;
+}
+body {
+    color: #000;
+    font-family: Boathouse, Segoe UI, Helvetica Neue, -apple-system, system-ui, BlinkMacSystemFont, Roboto, Arial, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol;
+    font-size: 14px;
+    line-height: 18px;
+}
+body {
+    background-color: #fff;
+    font-family: "Boathouse", "Segoe UI", "Helvetica Neue", -apple-system, system-ui, BlinkMacSystemFont, Roboto, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+}
+body {
+    color: #242428;
+    fill: currentColor;
+    font-size: 14px;
+    line-height: 1.45;
+}
+body, button, input, select, textarea {
+    font-family: "Boathouse", "Segoe UI", "Helvetica Neue", -apple-system, system-ui, BlinkMacSystemFont, Roboto, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+    font-weight: inherit;
+}
+body {
+    font-family: -apple-system, system-ui, BlinkMacSystemFont, Roboto, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+    font-size: 14px;
+    line-height: 1.3em;
+    color: #000;
+    background-color: #f7f7fa;
+}
+:root {
+    --reach-tabs: 1;
+}
+:root {
+    --reach-dialog: 1;
+}
+:root {
+    --reach-dialog: 1;
+}
+:root {
+    --reach-dialog: 1;
+}
+:root {
+    --reach-tabs: 1;
+}
+:root {
+    --reach-menu-button: 1;
+}
+html {
+    font-size: 100%;
+}
+html {
+    font-size: 10px;
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+}
+html {
+    font-family: sans-serif;
+    -ms-text-size-adjust: 100%;
+    -webkit-text-size-adjust: 100%;
+}
+user agent stylesheet
+:root {
+    --arc-palette-backgroundExtra: #FDFDFDFF;
+    --arc-palette-background: #EBEBECFF;
+    --arc-background-gradient-color1: #444134FF;
+    --arc-palette-foregroundTertiary: #EFF0F3FF;
+    --arc-palette-foregroundPrimary: #343744FF;
+    --arc-palette-maxContrastColor: #343744FF;
+    --arc-palette-hover: #D6D7DAFF;
+    --arc-background-gradient-color0: #343744FF;
+    --arc-palette-focus: #999BA2FF;
+    --arc-palette-cutoutColor: #EFF0F3FF;
+    --arc-palette-title: #101014FF;
+    --arc-palette-subtitle: #AEAFB4FF;
+    --arc-palette-minContrastColor: #EFF0F3FF;
+    --arc-palette-foregroundSecondary: #9095AAFF;
+}
+*:before, *:after {
+    box-sizing: border-box;
+}
+*:before, *:after {
+    box-sizing: border-box;
+}
+::selection {
+    background-color: #fc5200;
+    color: #fff;
+    text-shadow: none;
+}
+::selection {
+    background-color: #fc5200;
+    color: #fff;
+    text-shadow: none;
+}
+::selection {
+    background-color: #fc5200;
+    color: #fff;
+    text-shadow: none;
+}
+::selection {
+    background-color: #fc5200;
+    color: #fff;
+    text-shadow: none;
+}
+::selection {
+    background-color: #fc5200;
+    color: #fff;
+    text-shadow: none;
+}
+::selection {
+    background-color: #fc5200;
+    color: #fff;
+    text-shadow: none;
+}
+::selection {
+    background-color: #fc5200;
+    color: #fff;
+    text-shadow: none;
+}
+::selection {
+    background-color: #fc5200;
+    color: #fff;
+    text-shadow: none;
+}
+::selection {
+    background-color: #fc5200;
+    color: #fff;
+    text-shadow: none;
+}
+::selection {
+    background-color: #fc5200;
+    color: #fff;
+    text-shadow: none;
+}
