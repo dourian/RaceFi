@@ -13,24 +13,33 @@ supabase: Client = create_client(
 router = APIRouter(prefix="/runs", tags=["runs"])
 
 class RunBase(BaseModel):
-    start_time: datetime
-    end_time: Optional[datetime] = None
+    start_time: str
+    end_time: Optional[str] = None
     duration_seconds: Optional[int] = None
     distance_km: Optional[float] = None
     elevation_meters: Optional[int] = None
     avg_pace_min_per_km: Optional[float] = None
     max_speed_kmh: Optional[float] = None
-    polyline: Optional[str] = None  # GPS track data as polyline string
-    is_valid: Optional[bool] = True  # Whether the run follows the track
-    deviation_score: Optional[float] = None  # How much the run deviated from track (0-1)
+    polyline: Optional[str] = None
+    deviation_score: Optional[float] = None
 
 class RunCreate(RunBase):
-    participant_id: int
+    challenge_attendee_id: int
     challenge_id: int
+
+class RunUpdate(RunBase):
+    id: int
+    deviation_score: Optional[float] = None
+    polyline: Optional[str] = None
+    distance_km: Optional[float] = None
+    elevation_meters: Optional[int] = None
+    avg_pace_min_per_km: Optional[float] = None
+    max_speed_kmh: Optional[float] = None
+    is_active: Optional[bool] = None
 
 class RunResponse(RunBase):
     id: int
-    participant_id: int
+    challenge_attendee_id: int
     challenge_id: int
     created_at: Optional[Union[datetime, str]] = None
 
@@ -38,7 +47,7 @@ class ChallengeRequest(BaseModel):
     challenge_id: int
 
 class ParticipantRequest(BaseModel):
-    participant_id: int
+    challenge_attendee_id: int
 
 @router.post("/", response_model=RunResponse)
 async def create_run(run: RunCreate):
@@ -50,7 +59,7 @@ async def create_run(run: RunCreate):
             raise HTTPException(status_code=404, detail="Challenge not found")
         
         # Check if participant exists and is part of this challenge
-        participant = supabase.table('participants').select('*').eq('id', run.participant_id).eq('challenge_id', run.challenge_id).execute()
+        participant = supabase.table('challenge_attendees').select('*').eq('id', run.challenge_attendee_id).eq('challenge_id', run.challenge_id).execute()
         if not participant.data:
             raise HTTPException(status_code=404, detail="Participant not found")
         
@@ -66,17 +75,17 @@ async def create_run(run: RunCreate):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/participant/{participant_id}", response_model=List[RunResponse])
+@router.get("/participant", response_model=List[RunResponse])
 async def get_participant_runs(request: ParticipantRequest):
     """Get all runs for a specific participant"""
     try:
         # Check if participant exists
-        participant = supabase.table('participants').select('*').eq('id', request.participant_id).execute()
+        participant = supabase.table('challenge_attendees').select('*').eq('id', request.challenge_attendee_id).execute()
         if not participant.data:
             raise HTTPException(status_code=404, detail="Participant not found")
         
         # Get runs
-        result = supabase.table('runs').select('*').eq('participant_id', request.participant_id).execute()
+        result = supabase.table('runs').select('*').eq('challenge_attendee_id', request.challenge_attendee_id).execute()
         
         if not result.data:
             return []
@@ -101,5 +110,19 @@ async def get_challenge_runs(request: ChallengeRequest):
         
         return [RunResponse(**run) for run in result.data]
 
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/update", response_model=RunResponse)
+async def update_run(request: RunUpdate):
+    """Update a run"""
+    try:
+        result = supabase.table('runs').update(request.dict()).eq('id', request.id).execute()
+        
+        if not result.data:
+            raise HTTPException(status_code=500, detail="Failed to update run")
+        
+        return RunResponse(**result.data[0])
+    
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
