@@ -11,7 +11,8 @@ import {
   Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { challenges } from "../../constants";
+import { ApiService } from "../../src/services/apiService";
+import { Challenge } from "../../constants/types";
 import { colors, spacing, typography, shadows, borderRadius } from "../theme";
 import {
   Card,
@@ -33,9 +34,32 @@ import { useAppTime, getCurrentAppTime } from "../../constants/timeManager";
 
 export default function ChallengeDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const challenge = challenges.find((c) => c.id === id);
+  const [challenge, setChallenge] = useState<Challenge | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { getChallengeStatus, joinChallenge, startChallengeRun, cashOutWinnings } = useChallenge();
   const currentAppTime = useAppTime(); // Use centralized app time that updates when time changes
+
+  // Load challenge data from API
+  useEffect(() => {
+    const loadChallenge = async () => {
+      if (!id) return;
+      
+      try {
+        setLoading(true);
+        setError(null);
+        const challengeData = await ApiService.getChallengeById(id);
+        setChallenge(challengeData || null);
+      } catch (err) {
+        console.error('Error loading challenge:', err);
+        setError('Failed to load challenge');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadChallenge();
+  }, [id]);
 
   const challengeStatus = getChallengeStatus(id || '');
   const isJoined = challengeStatus.status !== 'not-joined';
@@ -157,10 +181,63 @@ export default function ChallengeDetail() {
   };
 
 
+  // Handle loading state
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
+        <View style={styles.centerContainer}>
+          <Text style={styles.loadingText}>Loading challenge...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Handle error state
+  if (error) {
+    return (
+      <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
+        <View style={styles.centerContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+          <Pressable 
+            style={styles.retryButton}
+            onPress={() => {
+              const loadChallenge = async () => {
+                if (!id) return;
+                
+                try {
+                  setLoading(true);
+                  setError(null);
+                  const challengeData = await ApiService.getChallengeById(id);
+                  setChallenge(challengeData || null);
+                } catch (err) {
+                  console.error('Error loading challenge:', err);
+                  setError('Failed to load challenge');
+                } finally {
+                  setLoading(false);
+                }
+              };
+              loadChallenge();
+            }}
+          >
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Handle challenge not found
   if (!challenge) {
     return (
       <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
-        <Text>Challenge not found.</Text>
+        <View style={styles.centerContainer}>
+          <Text style={styles.errorText}>Challenge not found.</Text>
+          <Link href="/(tabs)" asChild>
+            <Pressable style={styles.retryButton}>
+              <Text style={styles.retryButtonText}>Back to Challenges</Text>
+            </Pressable>
+          </Link>
+        </View>
       </SafeAreaView>
     );
   }
@@ -1012,5 +1089,33 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
     fontStyle: "italic",
     color: colors.textMuted,
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+  },
+  loadingText: {
+    ...typography.body,
+    color: colors.textMuted,
+    textAlign: 'center',
+  },
+  errorText: {
+    ...typography.body,
+    color: '#ef4444', // Red error color
+    textAlign: 'center',
+    marginBottom: spacing.md,
+  },
+  retryButton: {
+    backgroundColor: colors.accentStrong,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    ...typography.body,
+    fontWeight: '600',
+    color: 'white',
   },
 });

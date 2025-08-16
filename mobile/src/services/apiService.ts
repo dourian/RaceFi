@@ -1,9 +1,10 @@
-import { Challenge, Participant } from '../../constants/types';
-import { challenges } from '../../constants';
+import { Challenge, Participant } from "../../constants/types";
+import { challenges } from "../../constants";
+import supabase from "../../app/lib/supabase";
 
 /**
  * API Service Layer
- * 
+ *
  * This service abstracts data access for challenges and participants.
  * Currently uses mock data, but can be easily swapped with real API calls.
  */
@@ -11,29 +12,79 @@ import { challenges } from '../../constants';
 export class ApiService {
   // Challenge-related methods
   static async getChallenges(): Promise<Challenge[]> {
-    // TODO: Replace with actual API call
-    // return await fetch('/api/challenges').then(res => res.json());
-    return Promise.resolve(challenges);
+    const { data, error } = await supabase.from("challenges").select("*");
+    if (error) {
+      throw error;
+    }
+    const { data: runs, error: runsError } = await supabase
+      .from("runs")
+      .select("*");
+    if (runsError) {
+      throw runsError;
+    }
+
+    // Transform the data to ensure dates are Date objects and provide defaults for missing fields
+    return data.map((challenge) => ({
+      ...challenge,
+      startDate: challenge.start_date
+        ? new Date(challenge.start_date)
+        : new Date(),
+      endDate: challenge.end_date ? new Date(challenge.end_date) : new Date(),
+      creator: challenge.creator || {
+        name: "Challenge Creator",
+        avatar: null,
+        time: "N/A",
+      },
+      polyline:
+        runs.find((run) => run.challenge_id === challenge.id)?.polyline ||
+        "c~zbFfdtgVuHbBaFlGsApJrApJ`FlGtHbBtHcB`FmGrAqJsAqJaFmGuHcB",
+      participantsList: challenge.participantsList || [],
+    }));
   }
 
   static async getChallengeById(id: string): Promise<Challenge | undefined> {
-    // TODO: Replace with actual API call
-    // return await fetch(`/api/challenges/${id}`).then(res => res.json());
-    return Promise.resolve(challenges.find(c => c.id === id));
+    const { data, error } = await supabase
+      .from("challenges")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (error) {
+      if (error.code === "PGRST116") {
+        // No rows returned
+        return undefined;
+      }
+      throw error;
+    }
+
+    // Transform the data to ensure dates are Date objects and provide defaults for missing fields
+    return {
+      ...data,
+      startDate: data.start_date ? new Date(data.start_date) : new Date(),
+      endDate: data.end_date ? new Date(data.end_date) : new Date(),
+      creator: data.creator || {
+        name: "Challenge Creator",
+        avatar: null,
+        time: "N/A",
+      },
+      participantsList: data.participantsList || [],
+    };
   }
 
   // Participant-related methods
   static async getParticipants(challengeId: string): Promise<Participant[]> {
     // TODO: Replace with actual API call
     // return await fetch(`/api/challenges/${challengeId}/participants`).then(res => res.json());
-    const challenge = challenges.find(c => c.id === challengeId);
+    const challenge = challenges.find((c) => c.id === challengeId);
     return Promise.resolve(challenge?.participantsList || []);
   }
 
-  static async getChallengeCreator(challengeId: string): Promise<{ name: string; avatar: any; time: string } | null> {
+  static async getChallengeCreator(
+    challengeId: string
+  ): Promise<{ name: string; avatar: any; time: string } | null> {
     // TODO: Replace with actual API call
     // return await fetch(`/api/challenges/${challengeId}/creator`).then(res => res.json());
-    const challenge = challenges.find(c => c.id === challengeId);
+    const challenge = challenges.find((c) => c.id === challengeId);
     return Promise.resolve(challenge?.creator || null);
   }
 
