@@ -365,8 +365,8 @@ def mint_floating_line(req: MintFloatingLineRequest):
             print("Checking for the correct token ID...")
             recipient_address = Web3.to_checksum_address(req.recipient)
             
-            # Check token IDs 0-10 with a short timeout
-            for i in range(11):  # 0 to 10
+            # Check token IDs 0-50 with a short timeout
+            for i in range(51):  # 0 to 50
                 try:
                     # Set a short timeout for each call
                     owner = contract.functions.ownerOf(i).call({"timeout": 2})
@@ -404,7 +404,71 @@ def mint_floating_line(req: MintFloatingLineRequest):
         except Exception as e:
             print(f"Error in token ID check: {str(e)}")
         
-        # If we couldn't find a token ID, default to 0
+        # If we couldn't find a token ID in the first range, try some alternative approaches
+        if token_id is None:
+            # Try to get the total supply or next token ID from the contract
+            try:
+                print("Trying to get contract's total supply or next token ID...")
+                
+                # Try different common functions that might exist on the contract
+                next_token_id = None
+                
+                # Try getCurrentTokenId (our custom function)
+                try:
+                    next_token_id = contract.functions.getCurrentTokenId().call({"timeout": 2})
+                    print(f"getCurrentTokenId() returned: {next_token_id}")
+                    if next_token_id > 0:
+                        # Check the previous token ID (most recently minted)
+                        check_id = next_token_id - 1
+                        try:
+                            owner = contract.functions.ownerOf(check_id).call({"timeout": 2})
+                            if owner.lower() == recipient_address.lower():
+                                print(f"Found matching token ID {check_id} owned by recipient")
+                                token_id = check_id
+                        except Exception as e:
+                            print(f"Error checking token ID {check_id}: {str(e)}")
+                except Exception:
+                    pass
+                    
+                # Try totalSupply (ERC721Enumerable)
+                if token_id is None:
+                    try:
+                        total = contract.functions.totalSupply().call({"timeout": 2})
+                        print(f"totalSupply() returned: {total}")
+                        if total > 0:
+                            # Check the last token (most recently minted)
+                            check_id = total - 1
+                            try:
+                                owner = contract.functions.ownerOf(check_id).call({"timeout": 2})
+                                if owner.lower() == recipient_address.lower():
+                                    print(f"Found matching token ID {check_id} owned by recipient")
+                                    token_id = check_id
+                            except Exception as e:
+                                print(f"Error checking token ID {check_id}: {str(e)}")
+                    except Exception:
+                        pass
+            except Exception as e:
+                print(f"Error trying alternative approaches: {str(e)}")
+            
+            # If still not found, check some higher token IDs
+            if token_id is None:
+                print("Checking some higher token IDs...")
+                # Check some higher token IDs that might be common (100, 1000, etc.)
+                higher_ids = [100, 200, 500, 1000]
+                for i in higher_ids:
+                    try:
+                        owner = contract.functions.ownerOf(i).call({"timeout": 2})
+                        print(f"Token ID {i} is owned by: {owner}")
+                        
+                        if owner.lower() == recipient_address.lower():
+                            print(f"Found matching token ID {i} owned by recipient")
+                            token_id = i
+                            break
+                    except Exception:
+                        # Just skip errors for higher IDs
+                        pass
+        
+        # If we still couldn't find a token ID, default to 0
         if token_id is None:
             print("Could not determine token ID, defaulting to 0")
             token_id = 0
