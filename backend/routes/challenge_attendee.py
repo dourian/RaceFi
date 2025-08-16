@@ -37,6 +37,7 @@ class ChallengeAttendeeResponse(ChallengeAttendeeBase):
     updated_at: Optional[Union[datetime, str]] = None
 
 class ChallengeAttendeeUpdate(BaseModel):
+    id: int = Field(..., ge=1)
     status: Optional[str] = Field(None, pattern="^(joined|running|completed)$")
     start_time: Optional[Union[datetime, str]] = None
     end_time: Optional[Union[datetime, str]] = None
@@ -62,7 +63,7 @@ async def create_challenge_attendee(challenge_id: int, challenge_attendee: Chall
             raise HTTPException(status_code=400, detail="Challenge is full")
         
         # Check if participant already exists
-        existing_participant = supabase.table('participants').select('*').eq('challenge_id', challenge_id).eq('profile_id', challenge_attendee.profile_id).execute()
+        existing_participant = supabase.table('challenge_attendees').select('*').eq('challenge_id', challenge_id).eq('profile_id', challenge_attendee.profile_id).execute()
         if existing_participant.data:
             raise HTTPException(status_code=400, detail="Profile already participating in this challenge")
         
@@ -70,7 +71,7 @@ async def create_challenge_attendee(challenge_id: int, challenge_attendee: Chall
         participant_data = challenge_attendee.dict()
         participant_data['challenge_id'] = challenge_id
         participant_data['status'] = 'joined'
-        result = supabase.table('participants').insert(participant_data).execute()
+        result = supabase.table('challenge_attendees').insert(participant_data).execute()
         
         if not result.data:
             raise HTTPException(status_code=500, detail="Failed to create participant")
@@ -85,34 +86,61 @@ async def create_challenge_attendee(challenge_id: int, challenge_attendee: Chall
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.put("/{challenge_id}/{participant_id}", response_model=ChallengeAttendeeResponse)
+@router.put("/", response_model=ChallengeAttendeeResponse)
 async def update_challenge_attendee(
-    challenge_id: int, 
-    participant_id: int, 
-    participant_update: ChallengeAttendeeUpdate
+    request: ChallengeAttendeeUpdate
 ):
     """Update a participant's information (e.g., status, run data)"""
-    try:
-        # Check if challenge exists
-        challenge = supabase.table('challenges').select('*').eq('id', challenge_id).execute()
-        if not challenge.data:
-            raise HTTPException(status_code=404, detail="Challenge not found")
-        
-        # Check if participant exists
-        existing_participant = supabase.table('participants').select('*').eq('id', participant_id).eq('challenge_id', challenge_id).execute()
-        if not existing_participant.data:
-            raise HTTPException(status_code=404, detail="Participant not found")
-        
-        # Update participant
-        update_data = participant_update.dict(exclude_unset=True)
-        result = supabase.table('participants').update(update_data).eq('id', participant_id).execute()
+    try:        
+        update_data = request.dict(exclude_unset=True)
+        result = supabase.table('challenge_attendees').update(update_data).eq('id', request.id).execute()
         
         if not result.data:
             raise HTTPException(status_code=500, detail="Failed to update participant")
         
         return ChallengeAttendeeResponse(**result.data[0])
         
-    except HTTPException:
-        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) 
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/challenge/{challenge_id}", response_model=List[ChallengeAttendeeResponse])
+async def get_challenge_attendees(challenge_id: int):
+    """Get all participants for a specific challenge"""
+    try:
+        result = supabase.table('challenge_attendees').select('*').eq('challenge_id', challenge_id).execute()
+        
+        if not result.data:
+            return []
+        
+        return [ChallengeAttendeeResponse(**participant) for participant in result.data]
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/profile/{profile_id}", response_model=List[ChallengeAttendeeResponse])
+async def get_profile_challenges(profile_id: int):
+    """Get all challenges for a specific profile"""
+    try:
+        result = supabase.table('challenge_attendees').select('*').eq('profile_id', profile_id).execute()
+        
+        if not result.data:
+            return []
+        
+        return [ChallengeAttendeeResponse(**participant) for participant in result.data]
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/{id}", response_model=ChallengeAttendeeResponse)
+async def get_challenge_attendee(id: int):
+    """Get a specific challenge attendee"""
+    try:
+        result = supabase.table('challenge_attendees').select('*').eq('id', id).execute()
+        
+        if not result.data:
+            raise HTTPException(status_code=404, detail="Challenge attendee not found")
+        
+        return ChallengeAttendeeResponse(**result.data[0])
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
