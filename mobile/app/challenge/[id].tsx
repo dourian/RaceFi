@@ -8,6 +8,7 @@ import {
   ScrollView,
   Image,
   Dimensions,
+  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { challenges } from "../lib/mock";
@@ -26,6 +27,7 @@ import React, { useState, useEffect } from "react";
 import { useChallenge } from "../contexts/challengeContext";
 import { ChallengeService } from "../services/challengeService";
 import { RunCalculationService } from "../services/runCalculationService";
+import StaticRoutePreview from "../../components/StaticRoutePreview";
 
 export default function ChallengeDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -36,6 +38,7 @@ export default function ChallengeDetail() {
   const challengeStatus = getChallengeStatus(id || '');
   const isJoined = challengeStatus.status !== 'not-joined';
   const isCompleted = challengeStatus.status === 'completed';
+  const isWinner = challengeStatus.status === 'winner';
   const isInProgress = challengeStatus.status === 'in-progress';
 
   // Countdown timer effect
@@ -117,22 +120,37 @@ export default function ChallengeDetail() {
             </CardContent>
           </Card>
 
-          {/* Route Map */}
-          <Card style={styles.cardSpacing}>
-            <CardHeader title="Route Map" />
-            <CardContent>
-              <View style={styles.mapPlaceholder}>
-                <Ionicons name="map" size={48} color={colors.textMuted} />
-                <Text style={styles.mapText}>
-                  Interactive route map would appear here
-                </Text>
-                <Text style={styles.mapSubtext}>
-                  Showing {challenge.distanceKm}km route through{" "}
-                  {challenge.location.split(",")[0]}
-                </Text>
-              </View>
-            </CardContent>
-          </Card>
+          {/* Route Map - Only show for non-completed challenges */}
+          {!isCompleted && !isWinner && (
+            <Card style={styles.cardSpacing}>
+              <CardHeader title="Route Map" />
+              <CardContent>
+                <View style={styles.mapContainer}>
+                  {challenge.polyline ? (
+                    <StaticRoutePreview
+                      challengeId={challenge.id}
+                      polyline={challenge.polyline}
+                      routeColor={challenge.routeColor}
+                      width={Dimensions.get('window').width - 80}
+                      height={200}
+                      style={styles.routeMap}
+                    />
+                  ) : (
+                    <View style={styles.mapPlaceholder}>
+                      <Ionicons name="map" size={48} color={colors.textMuted} />
+                      <Text style={styles.mapText}>
+                        Route map coming soon
+                      </Text>
+                      <Text style={styles.mapSubtext}>
+                        Showing {challenge.distanceKm}km route through{" "}
+                        {challenge.location.split(",")[0]}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Challenge Status Card */}
           {!isJoined ? (
@@ -155,6 +173,57 @@ export default function ChallengeDetail() {
                   Winner takes all! Complete the challenge with the best time to
                   win the entire prize pool.
                 </Text>
+              </CardContent>
+            </Card>
+          ) : isWinner ? (
+            <Card style={{ ...styles.cardSpacing, ...styles.winnerCard }}>
+              <CardHeader
+                title="🏆 Challenge Winner!"
+                icon={<Ionicons name="trophy" size={18} color="#DAA520" />}
+              />
+              <CardContent>
+                <Text style={styles.winnerText}>
+                  🎉 Congratulations! You won this challenge and earned {challengeStatus.winnerRewards} USDC!
+                </Text>
+                {challengeStatus.runData && (
+                  <View style={styles.resultStats}>
+                    <View style={styles.resultItem}>
+                      <Text style={styles.winnerValue}>
+                        {RunCalculationService.formatDuration(challengeStatus.runData.duration)}
+                      </Text>
+                      <Text style={styles.resultLabel}>Winning Time</Text>
+                    </View>
+                    <View style={styles.resultItem}>
+                      <Text style={styles.winnerValue}>
+                        {RunCalculationService.formatDistance(challengeStatus.runData.distance)}
+                      </Text>
+                      <Text style={styles.resultLabel}>Distance</Text>
+                    </View>
+                    <View style={styles.resultItem}>
+                      <Text style={styles.winnerValue}>
+                        {challengeStatus.runData.pace}
+                      </Text>
+                      <Text style={styles.resultLabel}>Pace/km</Text>
+                    </View>
+                  </View>
+                )}
+                <Text style={styles.winnerNote}>
+                  Your reward has been added to your account! 🎊
+                </Text>
+                
+                <Pressable style={styles.cashOutButton} onPress={() => {
+                  Alert.alert(
+                    'Cash Out',
+                    `Ready to cash out your ${challengeStatus.winnerRewards} USDC winnings?`,
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      { text: 'Cash Out', onPress: () => Alert.alert('Success', 'Cashout initiated! Funds will be transferred to your wallet.') }
+                    ]
+                  );
+                }}>
+                  <Ionicons name="wallet" size={16} color="white" style={{ marginRight: 8 }} />
+                  <Text style={styles.cashOutButtonText}>Cash Out {challengeStatus.winnerRewards} USDC</Text>
+                </Pressable>
               </CardContent>
             </Card>
           ) : isCompleted ? (
@@ -253,87 +322,154 @@ export default function ChallengeDetail() {
             </Card>
           )}
 
-          {/* Countdown Timer */}
-          <Card style={styles.cardSpacing}>
-            <CardHeader
-              title="Time Remaining"
-              icon={<Ionicons name="time" size={18} color={colors.text} />}
-            />
-            <CardContent>
-              <View style={styles.timerContent}>
-                <Text style={styles.timeDisplay}>{formatTime(timeLeft)}</Text>
-                <Progress value={70} style={styles.progressBar} />
-                <Text style={styles.endDate}>
-                  Challenge ends {challenge.endDate.toLocaleDateString()}
-                </Text>
-              </View>
-            </CardContent>
-          </Card>
-
-          {/* Enhanced Participants List */}
-          <Card style={styles.cardSpacing}>
-            <CardHeader
-              title={`Participants (${challenge.participants}/${challenge.maxParticipants})`}
-              icon={<Ionicons name="people" size={18} color={colors.text} />}
-            />
-            <CardContent>
-              {/* Challenge Creator */}
-              <View style={styles.creatorRow}>
-                <Avatar source={challenge.creator.avatar} size={32} />
-                <View style={styles.participantInfo}>
-                  <Text style={styles.participantName}>
-                    {challenge.creator.name}
-                  </Text>
-                  <Text style={styles.participantStatus}>
-                    Creator • {challenge.creator.time}
+          {/* Countdown Timer - Only show for non-completed challenges */}
+          {!isCompleted && !isWinner && (
+            <Card style={styles.cardSpacing}>
+              <CardHeader
+                title="Time Remaining"
+                icon={<Ionicons name="time" size={18} color={colors.text} />}
+              />
+              <CardContent>
+                <View style={styles.timerContent}>
+                  <Text style={styles.timeDisplay}>{formatTime(timeLeft)}</Text>
+                  <Progress value={70} style={styles.progressBar} />
+                  <Text style={styles.endDate}>
+                    Challenge ends {challenge.endDate.toLocaleDateString()}
                   </Text>
                 </View>
-                <Badge variant="outline">
-                  <Text>Creator</Text>
-                </Badge>
-              </View>
+              </CardContent>
+            </Card>
+          )}
 
-              <Separator />
-
-              {/* Other Participants */}
-              {challenge.participantsList.map((participant, index) => (
-                <View key={index} style={styles.participantRow}>
-                  <Avatar source={participant.avatar} size={32} />
-                  <View style={styles.participantInfo}>
-                    <Text style={styles.participantName}>
-                      {participant.name}
-                    </Text>
-                    <Text style={styles.participantStatus}>
-                      {participant.status === "completed" && participant.time
-                        ? `Finished • ${participant.time}`
-                        : participant.status === "running" && participant.time
-                          ? `Running • ${participant.time}`
-                          : participant.status === "joined"
-                            ? "Joined"
-                            : participant.status || "No status"}
-                    </Text>
+          {/* Enhanced Participants List / Leaderboard */}
+          <Card style={styles.cardSpacing}>
+            <CardHeader
+              title={isCompleted || isWinner ? "Final Rankings" : `Participants (${challenge.participants}/${challenge.maxParticipants})`}
+              icon={<Ionicons name={isCompleted || isWinner ? "trophy" : "people"} size={18} color={isCompleted || isWinner ? "#DAA520" : colors.text} />}
+            />
+            <CardContent>
+              {isCompleted || isWinner ? (
+                // Show rankings for completed challenges
+                <View>
+                  {/* Your Position */}
+                  {(isWinner || isCompleted) && (
+                    <View style={[styles.rankingRow, isWinner && styles.winnerRow]}>
+                      <View style={styles.rankingPosition}>
+                        <Text style={[styles.rankingNumber, isWinner && styles.winnerText]}>
+                          {isWinner ? "👑" : "#2"}
+                        </Text>
+                      </View>
+                      <View style={styles.rankingInfo}>
+                        <Text style={[styles.rankingName, isWinner && styles.winnerText]}>You</Text>
+                        <Text style={styles.rankingTime}>
+                          {challengeStatus.runData ? 
+                            RunCalculationService.formatDuration(challengeStatus.runData.duration) : 
+                            "20:00"
+                          }
+                        </Text>
+                      </View>
+                      {isWinner && (
+                        <View style={styles.prizeIndicator}>
+                          <Text style={styles.prizeText}>{challenge.prizePool} USDC</Text>
+                        </View>
+                      )}
+                    </View>
+                  )}
+                  
+                  {/* Other Rankings */}
+                  <View style={styles.rankingRow}>
+                    <View style={styles.rankingPosition}>
+                      <Text style={styles.rankingNumber}>#1</Text>
+                    </View>
+                    <Avatar source={challenge.creator.avatar} size={28} />
+                    <View style={styles.rankingInfo}>
+                      <Text style={styles.rankingName}>{challenge.creator.name}</Text>
+                      <Text style={styles.rankingTime}>{isWinner ? "20:15" : challenge.creator.time}</Text>
+                    </View>
                   </View>
-                  <Badge
-                    variant={
-                      participant.status === "completed"
-                        ? "default"
-                        : participant.status === "running"
-                          ? "default"
-                          : "outline"
-                    }
-                  >
-                    <Text>
-                      {participant.status === "completed"
-                        ? "Done"
-                        : participant.status === "running"
-                          ? "Running"
-                          : participant.status === "joined"
-                            ? "Joined"
-                            : participant.status || "Status"}
-                    </Text>
-                  </Badge>
+                  
+                  {challenge.participantsList
+                    .filter(p => p.status === "completed")
+                    .slice(0, 3)
+                    .map((participant, index) => (
+                    <View key={index} style={styles.rankingRow}>
+                      <View style={styles.rankingPosition}>
+                        <Text style={styles.rankingNumber}>#{isWinner ? index + 2 : index + 2}</Text>
+                      </View>
+                      <Avatar source={participant.avatar} size={28} />
+                      <View style={styles.rankingInfo}>
+                        <Text style={styles.rankingName}>{participant.name}</Text>
+                        <Text style={styles.rankingTime}>{participant.time || "--:--"}</Text>
+                      </View>
+                    </View>
+                  ))}
+                  
+                  <Text style={styles.rankingNote}>
+                    {isWinner ? "🎉 Congratulations on winning!" : "Challenge completed! Thanks for participating."}
+                  </Text>
                 </View>
-              ))}
+              ) : (
+                // Show regular participants for ongoing challenges
+                <View>
+                  {/* Challenge Creator */}
+                  <View style={styles.creatorRow}>
+                    <Avatar source={challenge.creator.avatar} size={32} />
+                    <View style={styles.participantInfo}>
+                      <Text style={styles.participantName}>
+                        {challenge.creator.name}
+                      </Text>
+                      <Text style={styles.participantStatus}>
+                        Creator • {challenge.creator.time}
+                      </Text>
+                    </View>
+                    <Badge variant="outline">
+                      <Text>Creator</Text>
+                    </Badge>
+                  </View>
+
+                  <Separator />
+
+                  {/* Other Participants */}
+                  {challenge.participantsList.map((participant, index) => (
+                    <View key={index} style={styles.participantRow}>
+                      <Avatar source={participant.avatar} size={32} />
+                      <View style={styles.participantInfo}>
+                        <Text style={styles.participantName}>
+                          {participant.name}
+                        </Text>
+                        <Text style={styles.participantStatus}>
+                          {participant.status === "completed" && participant.time
+                            ? `Finished • ${participant.time}`
+                            : participant.status === "running" && participant.time
+                              ? `Running • ${participant.time}`
+                              : participant.status === "joined"
+                                ? "Joined"
+                                : participant.status || "No status"}
+                        </Text>
+                      </View>
+                      <Badge
+                        variant={
+                          participant.status === "completed"
+                            ? "default"
+                            : participant.status === "running"
+                              ? "default"
+                              : "outline"
+                        }
+                      >
+                        <Text>
+                          {participant.status === "completed"
+                            ? "Done"
+                            : participant.status === "running"
+                              ? "Running"
+                              : participant.status === "joined"
+                                ? "Joined"
+                                : participant.status || "Status"}
+                        </Text>
+                      </Badge>
+                    </View>
+                  ))}
+                </View>
+              )}
             </CardContent>
           </Card>
         </View>
@@ -424,6 +560,16 @@ const styles = StyleSheet.create({
     ...typography.meta,
     textAlign: "center",
     marginTop: spacing.xs,
+  },
+  mapContainer: {
+    width: "100%",
+    borderRadius: 8,
+    overflow: "hidden",
+  },
+  routeMap: {
+    width: "100%",
+    height: 200,
+    borderRadius: 8,
   },
   joinCard: {
     borderColor: "#e64a00",
@@ -585,5 +731,102 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 16,
     fontWeight: "bold",
+  },
+  // Winner challenge card
+  winnerCard: {
+    borderColor: "#DAA520",
+    borderWidth: 2,
+    backgroundColor: "rgba(255, 215, 0, 0.05)",
+  },
+  winnerText: {
+    ...typography.body,
+    marginBottom: spacing.lg,
+    color: "#B8860B",
+    fontWeight: "600",
+  },
+  winnerValue: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#DAA520",
+  },
+  winnerNote: {
+    ...typography.meta,
+    textAlign: "center",
+    fontStyle: "italic",
+    color: "#B8860B",
+    fontWeight: "500",
+    marginBottom: spacing.lg,
+  },
+  cashOutButton: {
+    backgroundColor: "#DAA520",
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderRadius: borderRadius.lg,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: spacing.sm,
+  },
+  cashOutButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  // Ranking/Leaderboard styles
+  rankingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
+    marginBottom: spacing.xs,
+    backgroundColor: colors.surface,
+    borderRadius: 8,
+  },
+  winnerRow: {
+    backgroundColor: "rgba(255, 215, 0, 0.1)",
+    borderWidth: 1,
+    borderColor: "#DAA520",
+  },
+  rankingPosition: {
+    width: 40,
+    alignItems: "center",
+    marginRight: spacing.sm,
+  },
+  rankingNumber: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: colors.text,
+  },
+  rankingInfo: {
+    flex: 1,
+    marginLeft: spacing.sm,
+  },
+  rankingName: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: colors.text,
+  },
+  rankingTime: {
+    fontSize: 12,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  prizeIndicator: {
+    backgroundColor: "#DAA520",
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: 12,
+  },
+  prizeText: {
+    fontSize: 12,
+    color: "white",
+    fontWeight: "bold",
+  },
+  rankingNote: {
+    ...typography.meta,
+    textAlign: "center",
+    marginTop: spacing.lg,
+    fontStyle: "italic",
+    color: colors.textMuted,
   },
 });

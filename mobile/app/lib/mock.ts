@@ -28,6 +28,8 @@ export type Challenge = {
   participantsList: Participant[];
   track?: { lat: number; lng: number }[]; // placeholder for coordinates
   routePreview?: any; // Route preview image
+  polyline?: string; // Encoded polyline for route display
+  routeColor?: string; // Color for the route line
 };
 
 export const challenges: Challenge[] = [
@@ -70,6 +72,8 @@ export const challenges: Challenge[] = [
         time: "12:34" 
       },
     ],
+    polyline: "ki{eFvqfiVqAWQIGEEKAYJgBVqDJ{BHa@jAkNJw@Pw@V{APs@^aABQAOEQGKoJ_FuJkFqAo@{A}@sH{DiAs@Q]?WVy@`@oBt@_CB]KYMMkB{AQEI@WT{BlE{@zAQPI@ICsCqA_BcAeCmAaFmCqIoEcLeG}KcG}A}@cDaBiDsByAkAuBqBi@y@_@o@o@kB}BgI",
+    routeColor: "#3b82f6", // Blue for waterfront
   },
   {
     id: "uptown-10k",
@@ -110,6 +114,8 @@ export const challenges: Challenge[] = [
         time: "42:33" 
       },
     ],
+    polyline: "kb~bFdxp|U}BaBkCcBaB_AiA{@qAmAuAcCa@aAYy@Ws@Qw@M{@G_BAgBB_AF{@L}@Py@Tw@Vw@\\y@b@w@f@{@j@{@n@w@r@s@t@q@x@m@z@i@|@e@~@a@`Ac@bAa@dAc@fAe@hAg@jAi@lAk@nAm@pAo@rAq@tAs@vAu@xAw@zA{@|A}@~A_@`B_A`BaAbBcAbBeAbBgAbBi@bBk@bBo@bBq@bBs@bBu@bBw@bBy@bB}@bB_AzA",
+    routeColor: "#ef4444", // Red for uptown
   },
 ];
 

@@ -14,6 +14,7 @@ interface ChallengeContextType {
   getChallengeStatus: (challengeId: string) => UserChallengeStatus;
   resetChallenge: (challengeId: string) => void;
   resetAllChallenges: () => void;
+  simulateCompletedChallengesWithResults: () => void;
 }
 
 const ChallengeContext = createContext<ChallengeContextType | undefined>(undefined);
@@ -94,6 +95,33 @@ export const ChallengeProvider: React.FC<{ children: ReactNode }> = ({ children 
     setUserChallengeStatuses([]);
   };
 
+  const simulateCompletedChallengesWithResults = () => {
+    // Import challenge data to get prize pools
+    const { challenges } = require('../lib/mock');
+    
+    const simulatedStatuses: UserChallengeStatus[] = [];
+    
+    challenges.forEach((challenge: any, index: number) => {
+      // Create mock run data
+      const isWinner = index === 0; // Make user winner of first challenge
+      const mockRunData = ChallengeService.createMockRunData(challenge.id, isWinner);
+      
+      // Create completed status
+      const joinedStatus = ChallengeService.joinChallenge(challenge.id);
+      const completedStatus = ChallengeService.completeChallengeRun(joinedStatus, mockRunData);
+      
+      // If this should be a winner, simulate winning
+      if (isWinner) {
+        const winnerStatus = ChallengeService.simulateWinner(completedStatus, challenge.prizePool);
+        simulatedStatuses.push(winnerStatus);
+      } else {
+        simulatedStatuses.push(completedStatus);
+      }
+    });
+    
+    setUserChallengeStatuses(simulatedStatuses);
+  };
+
   const value: ChallengeContextType = {
     userChallengeStatuses,
     joinChallenge,
@@ -102,6 +130,7 @@ export const ChallengeProvider: React.FC<{ children: ReactNode }> = ({ children 
     getChallengeStatus,
     resetChallenge,
     resetAllChallenges,
+    simulateCompletedChallengesWithResults,
   };
 
   return (

@@ -6,7 +6,7 @@ import { colors, shadows } from '../theme';
 
 const Profile: React.FC = () => {
   const { user, signOut } = useAuth();
-  const { resetAllChallenges } = useChallenge();
+  const { resetAllChallenges, simulateCompletedChallengesWithResults } = useChallenge();
 
   const handleSignOut = async () => {
     Alert.alert(
@@ -46,6 +46,23 @@ const Profile: React.FC = () => {
     );
   };
 
+  const handleSimulateCompletedChallenges = () => {
+    Alert.alert(
+      'Simulate Completed Challenges',
+      'This will simulate all challenges as completed with results. You will be marked as winner of the first challenge.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Simulate',
+          onPress: () => {
+            simulateCompletedChallengesWithResults();
+            Alert.alert('Success', 'All challenges have been simulated as completed with results!');
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -65,6 +82,10 @@ const Profile: React.FC = () => {
           {user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}
         </Text>
       </View>
+
+      <TouchableOpacity style={styles.simulateButton} onPress={handleSimulateCompletedChallenges}>
+        <Text style={styles.simulateButtonText}>Simulate Completed Races (Testing)</Text>
+      </TouchableOpacity>
 
       <TouchableOpacity style={styles.resetButton} onPress={handleResetChallenges}>
         <Text style={styles.resetButtonText}>Reset All Challenges (Testing)</Text>
@@ -115,6 +136,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.text,
     marginBottom: 10,
+  },
+  simulateButton: {
+    backgroundColor: '#28a745',
+    padding: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  simulateButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
   },
   resetButton: {
     backgroundColor: '#ff9500',

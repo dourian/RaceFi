@@ -3,12 +3,13 @@ import MapView, { Polyline } from 'react-native-maps';
 import { StyleSheet, View, TouchableOpacity, Text } from 'react-native';
 import { useLocation } from '../app/contexts/locationContext';
 
-export default function Map({ showsUserLocation, followsUserLocation, initialZoom = 0.01, alterMapEnabled, polylineCoordinates }: { 
+export default function Map({ showsUserLocation, followsUserLocation, initialZoom = 0.01, alterMapEnabled, polylineCoordinates, routeColor = '#e64a00' }: { 
     showsUserLocation?: boolean, 
     followsUserLocation?: boolean, 
     alterMapEnabled?: boolean,
     initialZoom?: number,
     polylineCoordinates?: Array<{ latitude: number, longitude: number }>,
+    routeColor?: string,
 }) {
     const [isGuest, setIsGuest] = useState(false);
     const { currentLocation, getCurrentLocation, locationPermission } = useLocation();
@@ -85,7 +86,7 @@ export default function Map({ showsUserLocation, followsUserLocation, initialZoo
                 {polylineCoordinates && polylineCoordinates.length > 1 && (
                     <Polyline
                         coordinates={polylineCoordinates}
-                        strokeColor="#e64a00" // Orange color for the route
+                        strokeColor={routeColor}
                         strokeWidth={4}
                         lineJoin="round"
                         lineCap="round"
