@@ -102,6 +102,12 @@ export const challenges: Challenge[] = [
         status: "running", 
         time: "25:18" 
       },
+      { 
+        name: "Emma Parker", 
+        avatar: require("../../assets/running/runner-profile.png"), 
+        status: "completed", 
+        time: "42:33" 
+      },
     ],
   },
 ];

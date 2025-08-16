@@ -1,6 +1,6 @@
-import { Link, useLocalSearchParams } from "expo-router";
+import { Link, useLocalSearchParams, router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Text, StyleSheet, Pressable, View, ScrollView } from "react-native";
+import { Text, StyleSheet, Pressable, View, ScrollView, Image, Dimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { challenges } from "../lib/mock";
 import { colors, spacing, typography, shadows, borderRadius } from "../theme";
@@ -50,8 +50,8 @@ export default function ChallengeDetail() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+    <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
+      <ScrollView style={styles.scrollView}>
         {/* Orange Header Banner */}
         <View style={styles.headerBanner}>
           <View style={styles.locationRow}>
@@ -62,24 +62,32 @@ export default function ChallengeDetail() {
           <Text style={styles.headerDescription}>{challenge.description}</Text>
         </View>
 
+        {/* Runner Image */}
+        <View style={styles.imageContainer}>
+          <Image 
+            source={require("../../assets/rwcover.webp")}
+            style={styles.runnerImage}
+            resizeMode="cover"
+          />
+        </View>
+
         <View style={styles.mainContent}>
           {/* Challenge Stats */}
           <Card>
             <CardHeader
               title="Challenge Details"
-              icon={<Ionicons name="flash" size={18} color={colors.accentStrong} />}
+              icon={
+                <Ionicons name="flash" size={18} color={colors.accentStrong} />
+              }
             />
             <CardContent>
               <View style={styles.statsGrid}>
                 <Stat label="Distance" value={`${challenge.distanceKm}km`} />
                 <Stat label="Elevation" value={`${challenge.elevation}m`} />
-                <Stat label="Prize Pool" value={`${challenge.prizePool} USDC`} />
-                <View style={{ alignItems: "center" }}>
-                  <Badge variant="secondary">
-                    <Text>{challenge.difficulty}</Text>
-                  </Badge>
-                  <Text style={styles.statLabel}>Difficulty</Text>
-                </View>
+                <Stat
+                  label="Prize Pool"
+                  value={`${challenge.prizePool} USDC`}
+                />
               </View>
             </CardContent>
           </Card>
@@ -90,9 +98,12 @@ export default function ChallengeDetail() {
             <CardContent>
               <View style={styles.mapPlaceholder}>
                 <Ionicons name="map" size={48} color={colors.textMuted} />
-                <Text style={styles.mapText}>Interactive route map would appear here</Text>
+                <Text style={styles.mapText}>
+                  Interactive route map would appear here
+                </Text>
                 <Text style={styles.mapSubtext}>
-                  Showing {challenge.distanceKm}km route through {challenge.location.split(',')[0]}
+                  Showing {challenge.distanceKm}km route through{" "}
+                  {challenge.location.split(",")[0]}
                 </Text>
               </View>
             </CardContent>
@@ -100,34 +111,48 @@ export default function ChallengeDetail() {
 
           {/* Join Challenge Card */}
           {!isJoined ? (
-            <Card style={[styles.cardSpacing, styles.joinCard]}>
+            <Card style={{ ...styles.cardSpacing, ...styles.joinCard }}>
               <CardHeader title="Join Challenge" />
               <CardContent>
                 <View style={styles.stakeInfo}>
                   <Text style={styles.stakeAmount}>{challenge.stake} USDC</Text>
                   <Text style={styles.stakeLabel}>Stake to join</Text>
                 </View>
-                <Pressable onPress={handleJoinChallenge} style={styles.joinButton}>
-                  <Text style={styles.joinButtonText}>Stake & Join Challenge</Text>
+                <Pressable
+                  onPress={handleJoinChallenge}
+                  style={styles.joinButton}
+                >
+                  <Text style={styles.joinButtonText}>
+                    Stake & Join Challenge
+                  </Text>
                 </Pressable>
                 <Text style={styles.stakeDisclaimer}>
-                  Your stake will be returned if you complete the challenge within the time limit
+                  Winner takes all! Complete the challenge with the best time to win the entire prize pool.
                 </Text>
               </CardContent>
             </Card>
           ) : (
-            <Card style={[styles.cardSpacing, styles.joinedCard]}>
+            <Card style={{ ...styles.cardSpacing, ...styles.joinedCard }}>
               <CardHeader
                 title="Joined!"
                 icon={<Ionicons name="trophy" size={18} color="#22c55e" />}
               />
               <CardContent>
                 <Text style={styles.joinedText}>
-                  You've successfully joined this challenge. Complete your run before the deadline to earn rewards!
+                  You've successfully joined this challenge. Complete your run
+                  before the deadline to earn rewards!
                 </Text>
-                <Link href={{ pathname: "/record", params: { id: challenge.id } }} asChild>
+                <Link
+                  href={{ pathname: "/record", params: { id: challenge.id } }}
+                  asChild
+                >
                   <Pressable style={styles.recordButton}>
-                    <Ionicons name="play" size={16} color="white" style={{ marginRight: 8 }} />
+                    <Ionicons
+                      name="play"
+                      size={16}
+                      color="white"
+                      style={{ marginRight: 8 }}
+                    />
                     <Text style={styles.recordButtonText}>Start Recording</Text>
                   </Pressable>
                 </Link>
@@ -163,8 +188,12 @@ export default function ChallengeDetail() {
               <View style={styles.creatorRow}>
                 <Avatar source={challenge.creator.avatar} size={32} />
                 <View style={styles.participantInfo}>
-                  <Text style={styles.participantName}>{challenge.creator.name}</Text>
-                  <Text style={styles.participantStatus}>Creator • {challenge.creator.time}</Text>
+                  <Text style={styles.participantName}>
+                    {challenge.creator.name}
+                  </Text>
+                  <Text style={styles.participantStatus}>
+                    Creator • {challenge.creator.time}
+                  </Text>
                 </View>
                 <Badge variant="outline">
                   <Text>Creator</Text>
@@ -178,11 +207,14 @@ export default function ChallengeDetail() {
                 <View key={index} style={styles.participantRow}>
                   <Avatar source={participant.avatar} size={32} />
                   <View style={styles.participantInfo}>
-                    <Text style={styles.participantName}>{participant.name}</Text>
+                    <Text style={styles.participantName}>
+                      {participant.name}
+                    </Text>
                     <Text style={styles.participantStatus}>
-                      {participant.status === "completed" && participant.time && `Finished • ${participant.time}`}
-                      {participant.status === "running" && participant.time && `Running • ${participant.time}`}
-                      {participant.status === "joined" && "Joined"}
+                      {participant.status === "completed" && participant.time ? `Finished • ${participant.time}` :
+                       participant.status === "running" && participant.time ? `Running • ${participant.time}` :
+                       participant.status === "joined" ? "Joined" :
+                       participant.status || "No status"}
                     </Text>
                   </View>
                   <Badge
@@ -190,16 +222,18 @@ export default function ChallengeDetail() {
                       participant.status === "completed"
                         ? "default"
                         : participant.status === "running"
-                        ? "secondary"
-                        : "outline"
+                          ? "default"
+                          : "outline"
                     }
                   >
                     <Text>
                       {participant.status === "completed"
                         ? "Done"
                         : participant.status === "running"
-                        ? "Running"
-                        : "Joined"}
+                          ? "Running"
+                        : participant.status === "joined"
+                          ? "Joined"
+                          : participant.status || "Status"}
                     </Text>
                   </Badge>
                 </View>
@@ -217,36 +251,48 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+  scrollView: {
+    flex: 1,
+  },
   scrollContent: {
     flexGrow: 1,
   },
   headerBanner: {
-    backgroundColor: '#e64a00',
+    backgroundColor: "#e64a00",
     paddingTop: spacing.lg,
     paddingBottom: spacing.xl,
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.xl,
     marginHorizontal: -spacing.lg,
   },
   locationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: spacing.sm,
   },
   locationText: {
-    color: 'rgba(255,255,255,0.8)',
+    color: "rgba(255,255,255,0.8)",
     fontSize: 14,
     marginLeft: spacing.xs,
   },
   headerTitle: {
-    color: 'white',
+    color: "white",
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: spacing.sm,
   },
   headerDescription: {
-    color: 'rgba(255,255,255,0.9)',
+    color: "rgba(255,255,255,0.9)",
     fontSize: 16,
     lineHeight: 22,
+  },
+  imageContainer: {
+    height: 200,
+    width: Dimensions.get('window').width,
+    alignSelf: 'center',
+  },
+  runnerImage: {
+    width: '100%',
+    height: '100%',
   },
   mainContent: {
     padding: spacing.lg,
@@ -266,59 +312,59 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
   },
   mapPlaceholder: {
-    aspectRatio: 16/9,
-    backgroundColor: colors.backgroundMuted,
+    aspectRatio: 16 / 9,
+    backgroundColor: colors.background,
     borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     padding: spacing.lg,
   },
   mapText: {
     ...typography.body,
-    textAlign: 'center',
+    textAlign: "center",
     marginTop: spacing.sm,
   },
   mapSubtext: {
     ...typography.meta,
-    textAlign: 'center',
+    textAlign: "center",
     marginTop: spacing.xs,
   },
   joinCard: {
-    borderColor: '#e64a00',
+    borderColor: "#e64a00",
     borderWidth: 1,
   },
   stakeInfo: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: spacing.lg,
   },
   stakeAmount: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: colors.text,
   },
   stakeLabel: {
     ...typography.meta,
   },
   joinButton: {
-    backgroundColor: '#e64a00',
+    backgroundColor: "#e64a00",
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
     borderRadius: borderRadius.lg,
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: spacing.md,
   },
   joinButtonText: {
-    color: 'white',
+    color: "white",
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   stakeDisclaimer: {
     ...typography.meta,
-    textAlign: 'center',
+    textAlign: "center",
     fontSize: 12,
   },
   joinedCard: {
-    borderColor: '#22c55e',
+    borderColor: "#22c55e",
     borderWidth: 1,
   },
   joinedText: {
@@ -326,46 +372,48 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   recordButton: {
-    backgroundColor: '#22c55e',
+    backgroundColor: "#22c55e",
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
     borderRadius: borderRadius.lg,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
   },
   recordButtonText: {
-    color: 'white',
+    color: "white",
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   timerContent: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   timeDisplay: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#e64a00',
-    marginBottom: spacing.sm,
+    fontWeight: "bold",
+    color: "#e64a00",
+    marginBottom: spacing.md,
   },
   progressBar: {
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
+    alignSelf: "stretch",
   },
   endDate: {
     ...typography.meta,
   },
   creatorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing.sm,
-    backgroundColor: 'rgba(230, 74, 0, 0.1)',
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    backgroundColor: "rgba(230, 74, 0, 0.1)",
     borderRadius: 8,
-    marginBottom: spacing.sm,
   },
   participantRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.sm,
   },
   participantInfo: {
     flex: 1,
@@ -373,7 +421,7 @@ const styles = StyleSheet.create({
   },
   participantName: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.text,
   },
   participantStatus: {

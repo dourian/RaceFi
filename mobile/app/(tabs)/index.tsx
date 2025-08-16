@@ -7,7 +7,7 @@ import { colors, spacing, typography, shadows } from "../theme";
 
 export default function BrowseScreen() {
   return (
-    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
+    <SafeAreaView style={styles.container} edges={["top", "left", "right", "bottom"]}>
       <Text style={styles.title}>Nearby Challenges</Text>
       <FlatList
         data={challenges}
@@ -49,6 +49,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: spacing.lg,
+    paddingTop: spacing.xl,
     backgroundColor: colors.background,
   },
   title: { ...typography.title, marginBottom: spacing.lg },
