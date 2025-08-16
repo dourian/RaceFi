@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../lib/auth-context';
 import { useChallenge } from '../contexts/challengeContext';
 import { useBalance } from '../contexts/balanceContext';
-import { colors, shadows, spacing } from '../theme';
+import { colors, shadows, spacing, typography } from '../theme';
 import WalletBalance from '../../components/WalletBalance';
 
 const Profile: React.FC = () => {
@@ -72,7 +72,7 @@ const Profile: React.FC = () => {
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Text style={styles.title}>Profile</Text>
+          <Text style={styles.headerTitle}>Profile</Text>
           <Text style={styles.subtitle}>Manage your account and earnings</Text>
         </View>
 
@@ -81,14 +81,14 @@ const Profile: React.FC = () => {
 
         {/* User Info */}
         <View style={styles.userInfo}>
-          <Text style={styles.label}>Email</Text>
-          <Text style={styles.value}>{user?.email}</Text>
+          <Text style={styles.infoLabel}>Email</Text>
+          <Text style={styles.infoValue}>{user?.email}</Text>
           
-          <Text style={styles.label}>User ID</Text>
-          <Text style={styles.value}>{user?.id}</Text>
+          <Text style={styles.infoLabel}>User ID</Text>
+          <Text style={styles.infoValue}>{user?.id}</Text>
           
-          <Text style={styles.label}>Joined</Text>
-          <Text style={styles.value}>
+          <Text style={styles.infoLabel}>Joined</Text>
+          <Text style={styles.infoValue}>
             {user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}
           </Text>
         </View>
@@ -127,11 +127,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     marginBottom: spacing.xl,
     paddingTop: spacing.md,
+  },
+  subtitle: {
+    ...typography.bodyMuted,
+    marginTop: spacing.xs,
   },
   headerTitle: {
     ...typography.title,

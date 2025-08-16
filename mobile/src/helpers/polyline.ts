@@ -28,7 +28,7 @@ const computeBearing = (from: LatLng, to: LatLng) => {
   return brng;
 };
 
-const haversineMeters = (a: LatLng, b: LatLng) => {
+export const haversineMeters = (a: LatLng, b: LatLng) => {
   const R = 6371000;
   const lat1 = toRadians(a.latitude);
   const lat2 = toRadians(b.latitude);

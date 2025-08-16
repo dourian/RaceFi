@@ -109,13 +109,15 @@ export default function Map({ showsUserLocation, followsUserLocation, initialZoo
         if (!recenterToRouteTrigger) return;
         if (!mapRef) return;
         if (!staticPolyline || staticPolyline.length === 0) return;
+        // If we're actively following the user, do not recenter to the route to avoid camera tug-of-war
+        if (followsUserLocation) return;
         try {
             mapRef.fitToCoordinates(staticPolyline, {
                 edgePadding: { top: 80, right: 80, bottom: 80, left: 80 },
                 animated: true,
             });
         } catch {}
-    }, [recenterToRouteTrigger, staticPolyline, mapRef]);
+    }, [recenterToRouteTrigger, staticPolyline, mapRef, followsUserLocation]);
 
     if (!isGuest && locationPermission !== 'granted') {
         return (

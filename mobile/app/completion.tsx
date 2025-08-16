@@ -34,8 +34,7 @@ export default function CompletionPage() {
     <>
       <Stack.Screen 
         options={{
-          title: "Completion",
-          headerBackVisible: false,
+          headerShown: false,
         }} 
       />
       <SafeAreaView style={styles.container} edges={["top", "left", "right", "bottom"]}>

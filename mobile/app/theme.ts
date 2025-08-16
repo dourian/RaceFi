@@ -29,6 +29,7 @@ export const typography = {
   h1: { fontSize: 22, fontWeight: "800" as const, color: colors.text },
   title: { fontSize: 22, fontWeight: "800" as const, color: colors.text },
   h2: { fontSize: 18, fontWeight: "700" as const, color: colors.text },
+  h3: { fontSize: 14, fontWeight: "600" as const, color: colors.text },
   body: { fontSize: 14, color: colors.text },
   bodyMuted: { fontSize: 14, color: colors.textMuted },
   meta: { fontSize: 12, color: colors.textMuted },

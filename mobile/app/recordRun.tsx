@@ -31,17 +31,18 @@ export default function RecordRun() {
   const isChallenge = !!challengeId;
   
   const [coords, setCoords] = useState<
-    { latitude: number; longitude: number; timestamp: number }[]
+    { latitude: number; longitude: number; timestamp: number; speed?: number }[]
   >([]);
   const [watching, setWatching] = useState(false);
   const [startTime, setStartTime] = useState<number | null>(null);
   const [now, setNow] = useState<number>(Date.now());
   const [runCompleted, setRunCompleted] = useState(false);
   const [completedRunData, setCompletedRunData] = useState<{
-    coords: { latitude: number; longitude: number; timestamp: number }[];
+    coords: { latitude: number; longitude: number; timestamp: number; speed?: number }[];
     duration: number;
     distance: number;
     pace: string;
+    maxSpeedKmh?: number;
   } | null>(null);
   const [recenterKey, setRecenterKey] = useState(0);
   const mapTranslateY = useRef(new Animated.Value(0)).current;
@@ -61,12 +62,14 @@ export default function RecordRun() {
           console.log('Adding new coordinate:', {
             latitude: location.latitude,
             longitude: location.longitude,
-            timestamp: location.timestamp
+            timestamp: location.timestamp,
+            speed: location.speed
           });
           return [...prev, {
             latitude: location.latitude,
             longitude: location.longitude,
-            timestamp: location.timestamp
+            timestamp: location.timestamp,
+            speed: location.speed
           }];
         }
         console.log('Skipping duplicate/similar coordinate');
@@ -90,7 +93,7 @@ export default function RecordRun() {
     if (runCompleted) {
       const timeoutId = setTimeout(() => {
         Animated.timing(mapTranslateY, {
-          toValue: -Dimensions.get('window').height * 0.2,
+          toValue: -Dimensions.get('window').height * 0.25,
           duration: 250,
           useNativeDriver: true,
         }).start();
@@ -165,12 +168,22 @@ export default function RecordRun() {
     
     // Prepare run completion data using service
     const runMetrics = RunCalculationService.calculateRunMetrics(coords, elapsedSec);
+    // Compute max speed (km/h) using recorded speed readings
+    let maxKmh = undefined as number | undefined;
+    for (let i = 0; i < coords.length; i++) {
+      const s = coords[i]?.speed;
+      if (typeof s === 'number' && isFinite(s)) {
+        const kmh = s * 3.6;
+        if (maxKmh === undefined || kmh > maxKmh) maxKmh = kmh;
+      }
+    }
     
     setCompletedRunData({
       coords,
       duration: runMetrics.duration,
       distance: runMetrics.distance,
       pace: runMetrics.pace,
+      maxSpeedKmh: maxKmh,
     });
     setRunCompleted(true);
     setRecenterKey((k) => k + 1);
@@ -236,6 +249,8 @@ export default function RecordRun() {
     setCoords([]);
     setStartTime(null);
     setNow(Date.now());
+    // Reset any pending route recenter triggers
+    setRecenterKey(0);
   };
 
   // COMPONENTS KEEP THIS COMMENT I NEED TO KEEP TRACK
@@ -306,12 +321,14 @@ export default function RecordRun() {
         {runCompleted && completedRunData && (
           <RecordRunCompleteSheet
             visible={runCompleted}
+            coords={completedRunData.coords}
             durationSeconds={completedRunData.duration}
             distanceMeters={completedRunData.distance}
             pace={completedRunData.pace}
             onSubmit={handleSubmitRun}
             onReset={handleResetRun}
             challengeId={challengeId}
+            maxSpeedKmh={completedRunData.maxSpeedKmh}
           />
         )}
       </SafeAreaView>

@@ -93,7 +93,7 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   button: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.accentStrong,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
     borderRadius: 8,

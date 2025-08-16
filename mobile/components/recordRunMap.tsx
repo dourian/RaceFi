@@ -1,5 +1,6 @@
 import Map from "./map";
-import { nycPolyline, appleParkPolyline, buildArrowMarkers } from "../src/helpers/polyline";
+import { buildArrowMarkers, decodePolyline } from "../src/helpers/polyline";
+import polyline from "@mapbox/polyline";
 
 export default function RecordRunMap({ coords, watching, recenterToRouteTrigger }: { coords: { latitude: number; longitude: number; timestamp: number }[], watching: boolean, recenterToRouteTrigger?: number }) {
     const movingPolyline = coords.map(coord => ({
@@ -7,7 +8,9 @@ export default function RecordRunMap({ coords, watching, recenterToRouteTrigger 
         longitude: coord.longitude,
     }));
 
-    const arrowMarkers = buildArrowMarkers(nycPolyline);
+    const mockPolyline = decodePolyline("eo{bFzqzgV?L@L?J?L@JAL?N?L?JAL?L");
+
+    const arrowMarkers = buildArrowMarkers(mockPolyline);
     
     return (    
     <Map
@@ -15,7 +18,7 @@ export default function RecordRunMap({ coords, watching, recenterToRouteTrigger 
         followsUserLocation={watching}
         alterMapEnabled={true}
         movingPolyline={movingPolyline}
-        staticPolyline={nycPolyline}
+        staticPolyline={mockPolyline}
         arrowMarkers={arrowMarkers}
         recenterToRouteTrigger={recenterToRouteTrigger}
     />
