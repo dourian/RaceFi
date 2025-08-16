@@ -34,7 +34,8 @@ print(f"- PINATA API: {'Using JWT' if PINATA_JWT else 'Using API Key' if PINATA_
 if not (RPC_URL and PUBLIC_ADDRESS and PRIVATE_KEY):
     raise RuntimeError("RPC_URL, PUBLIC_ADDRESS, and PRIVATE_KEY must be set in environment")
 
-w3 = Web3(Web3.HTTPProvider(RPC_URL))
+# Configure Web3 with timeout parameters to avoid hanging
+w3 = Web3(Web3.HTTPProvider(RPC_URL, request_kwargs={'timeout': 15}))
 
 # Helper function to get the next nonce for a transaction
 def next_nonce(address):
@@ -199,9 +200,9 @@ def sign_send_wait(tx):
         tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
         print(f"Transaction sent: {tx_hash.hex()}")
         
-        # Wait for receipt
+        # Wait for receipt with a shorter timeout to avoid hanging
         print("Waiting for transaction confirmation...")
-        receipt = w3.eth.wait_for_transaction_receipt(tx_hash, timeout=120)  # 2 minute timeout
+        receipt = w3.eth.wait_for_transaction_receipt(tx_hash, timeout=30)  # 30 second timeout
         print(f"Transaction confirmed in block {receipt.blockNumber}")
         print(f"Gas used: {receipt.gasUsed} ({receipt.gasUsed / tx.get('gas', 1) * 100:.1f}% of limit)")
         
@@ -235,7 +236,7 @@ def upload_file_to_pinata(file_bytes, filename="file.glb"):
     ipfs_hash = response.json()["IpfsHash"]
     return f"ipfs://{ipfs_hash}"
 
-def upload_metadata_to_pinata(name, description, file_uri, image_uri="https://coffee-top-walrus-619.mypinata.cloud/ipfs/bafybeifsmqfrlmy7fyx54r7rcyix57icrcixsvvzgi4qrpvprdsmwdi7ma"):
+def upload_metadata_to_pinata(name, description, file_uri, image_uri="https://coffee-top-walrus-619.mypinata.cloud/ipfs/bafybeibnf73slsl6fjskpk4bwwchu73ikr4qgkvqmckszo2ktenyhwkblm"):
     """
     Upload JSON metadata to Pinata and return its ipfs:// URI
     
@@ -357,120 +358,55 @@ def mint_floating_line(req: MintFloatingLineRequest):
         })
         tx_hash, receipt = sign_send_wait(tx)
         
-        # Extract the token ID from the transaction logs or directly from the contract
-        token_id = None
+        # Use a more efficient approach to find the correct token ID
+        token_id = None  # Start with None, will try to find the correct ID
+        
         try:
-            print("Attempting to extract token ID from transaction logs...")
-            # Print full receipt for debugging
-            print(f"Transaction receipt: {receipt}")
+            print("Checking for the correct token ID...")
+            recipient_address = Web3.to_checksum_address(req.recipient)
             
-            # First try to extract from our custom NFTMinted event
-            # NFTMinted event signature: keccak256("NFTMinted(address,uint256,string)")
-            nft_minted_signature = "0x997115af5aa7d2ce6f3b60b6fc0e9fd6b3cdc767d17c2ce6a7758e0d7258fce3"
-            
-            # Get the transaction receipt logs
-            logs = receipt.get("logs", [])
-            print(f"Found {len(logs)} logs in transaction receipt")
-            
-            # Look for our custom event first
-            for i, log in enumerate(logs):
-                print(f"Examining log {i}: {log}")
-                topics = log.get("topics", [])
-                if len(topics) >= 3:
-                    print(f"  Topic 0: {topics[0].hex()}")
-                    if topics[0].hex() == nft_minted_signature:
-                        # The 2nd indexed parameter (topics[2]) is the token ID in our custom event
-                        token_id_hex = topics[2].hex()
-                        token_id = int(token_id_hex, 16)
-                        print(f"Found token ID from NFTMinted event: {token_id}")
+            # Check token IDs 0-10 with a short timeout
+            for i in range(11):  # 0 to 10
+                try:
+                    # Set a short timeout for each call
+                    owner = contract.functions.ownerOf(i).call({"timeout": 2})
+                    print(f"Token ID {i} is owned by: {owner}")
+                    
+                    if owner.lower() == recipient_address.lower():
+                        print(f"Found matching token ID {i} owned by recipient")
+                        token_id = i
+                        
+                        # Try to verify this is the token we just minted by checking its URI
+                        try:
+                            current_uri = contract.functions.tokenURI(i).call({"timeout": 2})
+                            print(f"Token {i} URI: {current_uri}")
+                            
+                            # If this URI matches what we just set, this is definitely our token
+                            if current_uri == token_uri:
+                                print(f"Confirmed token ID {i} has the URI we just set")
+                                break  # We found our token, stop checking
+                        except Exception as uri_err:
+                            print(f"Couldn't check URI for token {i}: {str(uri_err)}")
+                except Exception as e:
+                    if "nonexistent token" in str(e).lower():
+                        print(f"Token ID {i} does not exist")
+                    else:
+                        print(f"Error checking token ID {i}: {str(e)}")
+                    
+                    # If we've already found a token owned by the recipient, stop checking
+                    if token_id is not None:
                         break
                     
-            # If we didn't find our custom event, look for the standard Transfer event
-            if token_id is None:
-                # Transfer event signature: keccak256("Transfer(address,address,uint256)")
-                transfer_signature = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
-                print(f"Looking for Transfer event with signature: {transfer_signature}")
-                
-                for i, log in enumerate(logs):
-                    topics = log.get("topics", [])
-                    if len(topics) >= 3 and topics[0].hex() == transfer_signature:
-                        print(f"Found Transfer event in log {i}")
-                        # The 3rd parameter is the token ID in ERC-721 Transfer
-                        if len(topics) >= 4:  # Some Transfer events have 4 topics
-                            token_id_hex = topics[3].hex()
-                            token_id = int(token_id_hex, 16)
-                            print(f"Found token ID from Transfer event topics: {token_id}")
-                            break
-                        elif log.get("data") and log.get("data") != "0x":  # Some have 3 topics with data field
-                            data = log.get("data", "0x0")
-                            print(f"Transfer event data: {data}")
-                            # Remove 0x prefix and convert to integer
-                            if data.startswith("0x"):
-                                data = data[2:]
-                            token_id = int(data, 16)
-                            print(f"Found token ID from Transfer event data: {token_id}")
-                            break
-            
-            # If we still couldn't extract it from logs, try to query the contract directly
-            if token_id is None:
-                print("Could not extract token ID from logs, trying to query contract...")
-                try:
-                    # Try to call getCurrentTokenId and subtract 1 to get the last minted token
-                    next_token_id = contract.functions.getCurrentTokenId().call()
-                    if next_token_id > 0:
-                        token_id = next_token_id - 1
-                        print(f"Got token ID from contract: next_token_id={next_token_id}, using token_id={token_id}")
-                except Exception as contract_error:
-                    print(f"Error querying contract for token ID: {str(contract_error)}")
-                    
-                # If that fails, check if the recipient owns any tokens from this contract
-                if token_id is None:
-                    try:
-                        recipient_address = Web3.to_checksum_address(req.recipient)
-                        # This is a simplified approach - in a real app you'd implement ERC721Enumerable
-                        # or use an indexer service like The Graph
-                        balance = contract.functions.balanceOf(recipient_address).call()
-                        print(f"Recipient balance: {balance}")
-                        
-                        if balance > 0:
-                            # Find all tokens owned by the recipient
-                            owned_tokens = []
-                            # Try a wider range of token IDs (0-100)
-                            for i in range(100):
-                                try:
-                                    owner = contract.functions.ownerOf(i).call()
-                                    if owner.lower() == recipient_address.lower():
-                                        owned_tokens.append(i)
-                                        print(f"Found token ID {i} owned by recipient")
-                                except Exception as e:
-                                    # If we get an error that's not "nonexistent token", print it
-                                    if "nonexistent token" not in str(e).lower():
-                                        print(f"Error checking token {i}: {str(e)}")
-                            
-                            print(f"All tokens owned by recipient: {owned_tokens}")
-                            
-                            if owned_tokens:
-                                # Assume the highest token ID is the most recently minted
-                                token_id = max(owned_tokens)
-                                print(f"Using highest token ID owned by recipient: {token_id}")
-                                
-                                # Try to get the token URI to verify
-                                try:
-                                    token_uri_check = contract.functions.tokenURI(token_id).call()
-                                    if token_uri_check == token_uri:
-                                        print(f"Confirmed token ID {token_id} has matching URI: {token_uri_check}")
-                                    else:
-                                        print(f"Warning: Token ID {token_id} has URI {token_uri_check}, which doesn't match expected URI {token_uri}")
-                                except Exception as uri_error:
-                                    print(f"Error checking token URI: {str(uri_error)}")
-                    except Exception as balance_error:
-                        print(f"Error checking recipient balance: {str(balance_error)}")
+                    # If we get any other error on token ID 0, it might be that the contract
+                    # doesn't support the ownerOf function or there's another issue
+                    if i == 0:
+                        print("Error on token ID 0, will default to 0 at the end if needed")
         except Exception as e:
-            print(f"Error extracting token ID: {str(e)}")
-            
-        # If we still couldn't extract it, default to 0 for first NFT
+            print(f"Error in token ID check: {str(e)}")
+        
+        # If we couldn't find a token ID, default to 0
         if token_id is None:
-            print("Could not extract token ID from logs or contract, defaulting to 0")
+            print("Could not determine token ID, defaulting to 0")
             token_id = 0
             
         return {
