@@ -1,263 +1,307 @@
-// Database types for RaceFi app
-// These types match the Supabase database schema
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[];
 
-export type DifficultyLevel = "Easy" | "Moderate" | "Hard";
-export type ParticipantStatus = "joined" | "running" | "completed";
-
-export interface Database {
+export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "13.0.4";
+  };
   public: {
     Tables: {
-      challenges: {
+      badges: {
         Row: {
-          id: string;
-          name: string;
+          created_at: string | null;
+          criteria: Json | null;
           description: string | null;
-          distance_km: number;
-          window_days: number;
-          stake: number;
-          elevation: number;
-          difficulty: DifficultyLevel;
-          prize_pool: number;
-          participants_count: number;
-          max_participants: number;
-          location: string;
-          start_date: string;
-          end_date: string;
-          creator_id: string | null;
-          creator_name: string;
-          creator_avatar_url: string | null;
-          creator_time: string | null;
-          is_active: boolean;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
+          id: string;
+          image_url: string | null;
           name: string;
-          description?: string | null;
-          distance_km: number;
-          window_days: number;
-          stake: number;
-          elevation: number;
-          difficulty: DifficultyLevel;
-          prize_pool: number;
-          participants_count?: number;
-          max_participants: number;
-          location: string;
-          start_date: string;
-          end_date: string;
-          creator_id?: string | null;
-          creator_name: string;
-          creator_avatar_url?: string | null;
-          creator_time?: string | null;
-          is_active?: boolean;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: {
-          id?: string;
-          name?: string;
-          description?: string | null;
-          distance_km?: number;
-          window_days?: number;
-          stake?: number;
-          elevation?: number;
-          difficulty?: DifficultyLevel;
-          prize_pool?: number;
-          participants_count?: number;
-          max_participants?: number;
-          location?: string;
-          start_date?: string;
-          end_date?: string;
-          creator_id?: string | null;
-          creator_name?: string;
-          creator_avatar_url?: string | null;
-          creator_time?: string | null;
-          is_active?: boolean;
-          created_at?: string;
-          updated_at?: string;
-        };
-      };
-      tracks: {
-        Row: {
-          id: string;
-          challenge_id: string;
-          coordinates: any; // JSONB array of {lat: number, lng: number}
-          created_at: string;
         };
         Insert: {
+          created_at?: string | null;
+          criteria?: Json | null;
+          description?: string | null;
           id?: string;
-          challenge_id: string;
-          coordinates: any;
-          created_at?: string;
+          image_url?: string | null;
+          name: string;
         };
         Update: {
+          created_at?: string | null;
+          criteria?: Json | null;
+          description?: string | null;
           id?: string;
-          challenge_id?: string;
-          coordinates?: any;
-          created_at?: string;
+          image_url?: string | null;
+          name?: string;
         };
+        Relationships: [];
       };
-      participants: {
+      challenge_attendees: {
         Row: {
-          id: string;
-          challenge_id: string;
-          user_id: string | null;
-          code_name: string;
-          avatar_url: string | null;
-          status: ParticipantStatus;
-          start_time: string | null;
-          end_time: string | null;
+          challenge_id: number | null;
           completion_time: string | null;
+          created_at: string | null;
           distance_covered: number | null;
           elevation_gained: number | null;
-          track_data: any | null; // JSONB GPS track data
+          end_time: string | null;
+          id: number;
+          profile_id: number | null;
           stake_amount: number;
           stake_transaction_hash: string | null;
-          joined_at: string;
-          updated_at: string;
+          start_time: string | null;
+          status: Database["public"]["Enums"]["participant_status"] | null;
+          updated_at: string | null;
         };
         Insert: {
-          id?: string;
-          challenge_id: string;
-          user_id?: string | null;
-          code_name: string;
-          avatar_url?: string | null;
-          status?: ParticipantStatus;
-          start_time?: string | null;
-          end_time?: string | null;
+          challenge_id?: number | null;
           completion_time?: string | null;
+          created_at?: string | null;
           distance_covered?: number | null;
           elevation_gained?: number | null;
-          track_data?: any | null;
+          end_time?: string | null;
+          id?: number;
+          profile_id?: number | null;
           stake_amount: number;
           stake_transaction_hash?: string | null;
-          joined_at?: string;
-          updated_at?: string;
+          start_time?: string | null;
+          status?: Database["public"]["Enums"]["participant_status"] | null;
+          updated_at?: string | null;
         };
         Update: {
-          id?: string;
-          challenge_id?: string;
-          user_id?: string | null;
-          code_name?: string;
-          avatar_url?: string | null;
-          status?: ParticipantStatus;
-          start_time?: string | null;
-          end_time?: string | null;
+          challenge_id?: number | null;
           completion_time?: string | null;
+          created_at?: string | null;
           distance_covered?: number | null;
           elevation_gained?: number | null;
-          track_data?: any | null;
+          end_time?: string | null;
+          id?: number;
+          profile_id?: number | null;
           stake_amount?: number;
           stake_transaction_hash?: string | null;
-          joined_at?: string;
-          updated_at?: string;
+          start_time?: string | null;
+          status?: Database["public"]["Enums"]["participant_status"] | null;
+          updated_at?: string | null;
         };
+        Relationships: [
+          {
+            foreignKeyName: "challenge_attendees_challenge_id_fkey";
+            columns: ["challenge_id"];
+            isOneToOne: false;
+            referencedRelation: "challenges";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "challenge_attendees_profile_id_fkey";
+            columns: ["profile_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      challenges: {
+        Row: {
+          created_at: string | null;
+          created_by_profile_id: number | null;
+          description: string | null;
+          difficulty: Database["public"]["Enums"]["difficulty_level"];
+          distance_km: number;
+          elevation: number;
+          end_date: string;
+          id: number;
+          is_active: boolean | null;
+          location: string;
+          max_participants: number;
+          name: string;
+          participants_count: number | null;
+          prize_pool: number;
+          stake: number;
+          start_date: string;
+          updated_at: string | null;
+        };
+        Insert: {
+          created_at?: string | null;
+          created_by_profile_id?: number | null;
+          description?: string | null;
+          difficulty: Database["public"]["Enums"]["difficulty_level"];
+          distance_km: number;
+          elevation: number;
+          end_date: string;
+          id?: number;
+          is_active?: boolean | null;
+          location: string;
+          max_participants: number;
+          name: string;
+          participants_count?: number | null;
+          prize_pool: number;
+          stake: number;
+          start_date: string;
+          updated_at?: string | null;
+        };
+        Update: {
+          created_at?: string | null;
+          created_by_profile_id?: number | null;
+          description?: string | null;
+          difficulty?: Database["public"]["Enums"]["difficulty_level"];
+          distance_km?: number;
+          elevation?: number;
+          end_date?: string;
+          id?: number;
+          is_active?: boolean | null;
+          location?: string;
+          max_participants?: number;
+          name?: string;
+          participants_count?: number | null;
+          prize_pool?: number;
+          stake?: number;
+          start_date?: string;
+          updated_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "challenges_created_by_profile_id_fkey1";
+            columns: ["created_by_profile_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      profiles: {
+        Row: {
+          avatar_url: string | null;
+          created_at: string;
+          email: string | null;
+          first_name: string | null;
+          id: number;
+          last_name: string | null;
+          updated_at: string | null;
+          user_id: string;
+        };
+        Insert: {
+          avatar_url?: string | null;
+          created_at?: string;
+          email?: string | null;
+          first_name?: string | null;
+          id?: number;
+          last_name?: string | null;
+          updated_at?: string | null;
+          user_id: string;
+        };
+        Update: {
+          avatar_url?: string | null;
+          created_at?: string;
+          email?: string | null;
+          first_name?: string | null;
+          id?: number;
+          last_name?: string | null;
+          updated_at?: string | null;
+          user_id?: string;
+        };
+        Relationships: [];
       };
       runs: {
         Row: {
-          id: string;
-          participant_id: string;
-          challenge_id: string;
-          start_time: string;
-          end_time: string | null;
-          duration_seconds: number | null;
-          distance_km: number | null;
-          elevation_meters: number | null;
           avg_pace_min_per_km: number | null;
-          max_speed_kmh: number | null;
-          gps_track: any | null; // JSONB detailed GPS coordinates
-          is_valid: boolean;
+          challenge_attendee_id: number | null;
+          challenge_id: number | null;
+          created_at: string | null;
           deviation_score: number | null;
-          created_at: string;
-        };
-        Insert: {
-          id?: string;
-          participant_id: string;
-          challenge_id: string;
+          distance_km: number | null;
+          duration_seconds: number | null;
+          elevation_meters: number | null;
+          end_time: string | null;
+          id: number;
+          max_speed_kmh: number | null;
+          polyline: string | null;
           start_time: string;
-          end_time?: string | null;
-          duration_seconds?: number | null;
-          distance_km?: number | null;
-          elevation_meters?: number | null;
+          updated_at: string | null;
+        };
+        Insert: {
           avg_pace_min_per_km?: number | null;
-          max_speed_kmh?: number | null;
-          gps_track?: any | null;
-          is_valid?: boolean;
+          challenge_attendee_id?: number | null;
+          challenge_id?: number | null;
+          created_at?: string | null;
           deviation_score?: number | null;
-          created_at?: string;
+          distance_km?: number | null;
+          duration_seconds?: number | null;
+          elevation_meters?: number | null;
+          end_time?: string | null;
+          id?: number;
+          max_speed_kmh?: number | null;
+          polyline?: string | null;
+          start_time: string;
+          updated_at?: string | null;
         };
         Update: {
-          id?: string;
-          participant_id?: string;
-          challenge_id?: string;
+          avg_pace_min_per_km?: number | null;
+          challenge_attendee_id?: number | null;
+          challenge_id?: number | null;
+          created_at?: string | null;
+          deviation_score?: number | null;
+          distance_km?: number | null;
+          duration_seconds?: number | null;
+          elevation_meters?: number | null;
+          end_time?: string | null;
+          id?: number;
+          max_speed_kmh?: number | null;
+          polyline?: string | null;
           start_time?: string;
-          end_time?: string | null;
-          duration_seconds?: number | null;
-          distance_km?: number | null;
-          elevation_meters?: number | null;
-          avg_pace_min_per_km?: number | null;
-          max_speed_kmh?: number | null;
-          gps_track?: any | null;
-          is_valid?: boolean;
-          deviation_score?: number | null;
-          created_at?: string;
+          updated_at?: string | null;
         };
+        Relationships: [
+          {
+            foreignKeyName: "runs_challenge_attendee_id_fkey";
+            columns: ["challenge_attendee_id"];
+            isOneToOne: false;
+            referencedRelation: "challenge_attendees";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "runs_challenge_id_fkey";
+            columns: ["challenge_id"];
+            isOneToOne: false;
+            referencedRelation: "challenges";
+            referencedColumns: ["id"];
+          }
+        ];
       };
-      badges: {
+      tracks: {
         Row: {
-          id: string;
-          name: string;
-          description: string | null;
-          image_url: string | null;
-          criteria: any; // JSONB criteria object
+          challenge_id: number | null;
           created_at: string;
+          id: number;
+          polyline: string | null;
+          updated_at: string | null;
         };
         Insert: {
-          id?: string;
-          name: string;
-          description?: string | null;
-          image_url?: string | null;
-          criteria: any;
+          challenge_id?: number | null;
           created_at?: string;
+          id?: number;
+          polyline?: string | null;
+          updated_at?: string | null;
         };
         Update: {
-          id?: string;
-          name?: string;
-          description?: string | null;
-          image_url?: string | null;
-          criteria?: any;
+          challenge_id?: number | null;
           created_at?: string;
+          id?: number;
+          polyline?: string | null;
+          updated_at?: string | null;
         };
-      };
-      user_badges: {
-        Row: {
-          id: string;
-          user_id: string;
-          badge_id: string;
-          challenge_id: string | null;
-          earned_at: string;
-          nft_token_id: string | null;
-          nft_contract_address: string | null;
-        };
-        Insert: {
-          id?: string;
-          user_id: string;
-          badge_id: string;
-          challenge_id?: string | null;
-          earned_at?: string;
-          nft_token_id?: string | null;
-          nft_contract_address?: string | null;
-        };
-        Update: {
-          id?: string;
-          user_id?: string;
-          badge_id?: string;
-          challenge_id?: string | null;
-          earned_at?: string;
-          nft_token_id?: string | null;
-          nft_contract_address?: string | null;
-        };
+        Relationships: [
+          {
+            foreignKeyName: "tracks_challenge_id_fkey";
+            columns: ["challenge_id"];
+            isOneToOne: false;
+            referencedRelation: "challenges";
+            referencedColumns: ["id"];
+          }
+        ];
       };
     };
     Views: {
@@ -267,35 +311,140 @@ export interface Database {
       [_ in never]: never;
     };
     Enums: {
-      difficulty_level: DifficultyLevel;
-      participant_status: ParticipantStatus;
+      difficulty_level: "Easy" | "Moderate" | "Hard";
+      participant_status: "joined" | "running" | "completed";
+    };
+    CompositeTypes: {
+      [_ in never]: never;
     };
   };
-}
+};
 
-// Helper types for easier usage
-export type Challenge = Database["public"]["Tables"]["challenges"]["Row"];
-export type Track = Database["public"]["Tables"]["tracks"]["Row"];
-export type Participant = Database["public"]["Tables"]["participants"]["Row"];
-export type Run = Database["public"]["Tables"]["runs"]["Row"];
-export type Badge = Database["public"]["Tables"]["badges"]["Row"];
-export type UserBadge = Database["public"]["Tables"]["user_badges"]["Row"];
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">;
 
-// Extended types that include related data (for API responses)
-export interface ChallengeWithDetails extends Challenge {
-  tracks: Track[];
-  participants: Participant[];
-  creator: {
-    name: string;
-    avatar_url: string | null;
-    time: string | null;
-  };
-}
+type DefaultSchema = DatabaseWithoutInternals[Extract<
+  keyof Database,
+  "public"
+>];
 
-export interface ParticipantWithDetails extends Participant {
-  runs: Run[];
-  user: {
-    code_name: string;
-    avatar_url: string | null;
-  };
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals;
 }
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R;
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+      DefaultSchema["Views"])
+  ? (DefaultSchema["Tables"] &
+      DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+      Row: infer R;
+    }
+    ? R
+    : never
+  : never;
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals;
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I;
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+      Insert: infer I;
+    }
+    ? I
+    : never
+  : never;
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals;
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U;
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+      Update: infer U;
+    }
+    ? U
+    : never
+  : never;
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals;
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+  ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+  : never;
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals;
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+  ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+  : never;
+
+export const Constants = {
+  public: {
+    Enums: {
+      difficulty_level: ["Easy", "Moderate", "Hard"],
+      participant_status: ["joined", "running", "completed"],
+    },
+  },
+} as const;
