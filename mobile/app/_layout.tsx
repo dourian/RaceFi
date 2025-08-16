@@ -1,6 +1,7 @@
-import { Stack } from "expo-router";
-import { StatusBar } from "expo-status-bar";
-import { colors, typography } from "./theme";
+import { Stack } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import { colors, typography } from './theme';
+import { AuthProvider } from './lib/auth-context';
 
 export default function RootLayout() {
   return (
@@ -15,8 +16,8 @@ export default function RootLayout() {
         }}
       >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="challenge/[id]" options={{ title: "Challenge" }} />
-        <Stack.Screen name="record" options={{ title: "Record Run" }} />
+        <Stack.Screen name="challenge/[id]" options={{ title: 'Challenge' }} />
+        <Stack.Screen name="record" options={{ title: 'Record Run' }} />
       </Stack>
     </AuthProvider>
   );
