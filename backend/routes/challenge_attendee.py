@@ -13,12 +13,14 @@ supabase: Client = create_client(
 router = APIRouter(prefix="/challenge-attendee", tags=["challenge-attendee"])
 
 class ChallengeAttendeeBase(BaseModel):
-    code_name: str = Field(..., min_length=1, max_length=50)
-    avatar_url: Optional[str] = None
     stake_amount: float = Field(..., gt=0)
+    start_time: str = Field(..., format="date-time")
+    end_time: str = Field(..., format="date-time")
+
 
 class ChallengeAttendeeCreate(ChallengeAttendeeBase):
-    profile_id: str = Field(..., min_length=1)
+    profile_id: int = Field(..., ge=1)
+    challenge_id: int = Field(..., ge=1)
 
 class ChallengeAttendeeResponse(ChallengeAttendeeBase):
     id: int
@@ -26,8 +28,6 @@ class ChallengeAttendeeResponse(ChallengeAttendeeBase):
     profile_id: str
     user_id: Optional[str]
     status: str = Field(..., pattern="^(joined|running|completed)$")
-    start_time: Optional[Union[datetime, str]] = None
-    end_time: Optional[Union[datetime, str]] = None
     completion_time: Optional[str] = None
     distance_covered: Optional[float] = None
     elevation_gained: Optional[int] = None
@@ -46,12 +46,12 @@ class ChallengeAttendeeUpdate(BaseModel):
     elevation_gained: Optional[int] = None
     track_data: Optional[dict] = None
 
-@router.post("/{challenge_id}", response_model=ChallengeAttendeeResponse)
-async def create_challenge_attendee(challenge_id: int, challenge_attendee: ChallengeAttendeeCreate):
+@router.post("/", response_model=ChallengeAttendeeResponse)
+async def create_challenge_attendee(request: ChallengeAttendeeCreate):
     """Create a new participant for a specific challenge"""
     try:
         # Check if challenge exists and is active
-        challenge = supabase.table('challenges').select('*').eq('id', challenge_id).execute()
+        challenge = supabase.table('challenges').select('*').eq('id', request.challenge_id).execute()
         if not challenge.data:
             raise HTTPException(status_code=404, detail="Challenge not found")
         
@@ -63,23 +63,15 @@ async def create_challenge_attendee(challenge_id: int, challenge_attendee: Chall
             raise HTTPException(status_code=400, detail="Challenge is full")
         
         # Check if participant already exists
-        existing_participant = supabase.table('challenge_attendees').select('*').eq('challenge_id', challenge_id).eq('profile_id', challenge_attendee.profile_id).execute()
+        existing_participant = supabase.table('challenge_attendees').select('*').eq('challenge_id', request.challenge_id).eq('profile_id', request.profile_id).execute()
         if existing_participant.data:
             raise HTTPException(status_code=400, detail="Profile already participating in this challenge")
         
-        # Create participant
-        participant_data = challenge_attendee.dict()
-        participant_data['challenge_id'] = challenge_id
+        # Create challenge attendee
+        participant_data = request.dict()
+        participant_data['challenge_id'] = request.challenge_id
         participant_data['status'] = 'joined'
         result = supabase.table('challenge_attendees').insert(participant_data).execute()
-        
-        if not result.data:
-            raise HTTPException(status_code=500, detail="Failed to create participant")
-        
-        # Update challenge participants count
-        supabase.table('challenges').update({
-            'participants_count': challenge.data[0]['participants_count'] + 1
-        }).eq('id', challenge_id).execute()
         
         return ChallengeAttendeeResponse(**result.data[0])
         
