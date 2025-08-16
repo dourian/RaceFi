@@ -29,6 +29,7 @@ interface LocationContextType {
   startLocationUpdates: () => Promise<void>;
   stopLocationUpdates: () => void;
   checkLocationServices: () => Promise<boolean>;
+  resetLocation: () => void;
 }
 
 // Create the context
@@ -145,32 +146,45 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
   // Start continuous location updates
   const startLocationUpdates = async (): Promise<void> => {
     try {
+      console.log('Starting location updates, current permission:', locationPermission);
+      
       if (locationPermission !== 'granted') {
+        console.log('Permission not granted, requesting...');
         const permissionGranted = await requestLocationPermission();
         if (!permissionGranted) {
+          console.log('Permission denied, cannot start location updates');
           return;
         }
       }
 
       // Stop any existing subscription
       if (locationSubscription) {
+        console.log('Stopping existing location subscription');
         locationSubscription.remove();
       }
 
+      console.log('Starting location watcher...');
       // Start location updates
       const subscription = await Location.watchPositionAsync(
         {
           accuracy: Location.Accuracy.Balanced,
           timeInterval: 1000, // Update every second
-          distanceInterval: 5, // Update every 5 meters
+          distanceInterval: 1, // Update every meter for testing
           // iOS-specific options
           ...(Platform.OS === 'ios' && {
             activityType: Location.ActivityType.Fitness,
-            allowsBackgroundLocationUpdates: true,
+            allowsBackgroundLocationUpdates: false, // Disable for testing
             showsBackgroundLocationIndicator: true,
           }),
         },
         (newLocation) => {
+          console.log('Location update received:', {
+            lat: newLocation.coords.latitude,
+            lng: newLocation.coords.longitude,
+            accuracy: newLocation.coords.accuracy,
+            timestamp: newLocation.timestamp
+          });
+          
           const locationData: LocationData = {
             latitude: newLocation.coords.latitude,
             longitude: newLocation.coords.longitude,
@@ -190,9 +204,11 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
         }
       );
 
+      console.log('Location watcher started successfully');
       setLocationSubscription(subscription);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      console.error('Error starting location updates:', err);
       setError(`Error starting location updates: ${errorMessage}`);
     }
   };
@@ -203,6 +219,14 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
       locationSubscription.remove();
       setLocationSubscription(null);
     }
+  };
+
+  // Reset location data to get fresh starting point
+  const resetLocation = (): void => {
+    console.log('Resetting location context for new run');
+    setLocation(null);
+    setCurrentLocation(null);
+    setError(null);
   };
 
   // Check permissions on mount
@@ -244,6 +268,7 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
     startLocationUpdates,
     stopLocationUpdates,
     checkLocationServices,
+    resetLocation,
   };
 
   return (

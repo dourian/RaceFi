@@ -23,12 +23,20 @@ import {
   Separator,
 } from "../../components/ui";
 import React, { useState, useEffect } from "react";
+import { useChallenge } from "../contexts/challengeContext";
+import { ChallengeService } from "../services/challengeService";
+import { RunCalculationService } from "../services/runCalculationService";
 
 export default function ChallengeDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const challenge = challenges.find((c) => c.id === id);
-  const [isJoined, setIsJoined] = useState(false);
+  const { getChallengeStatus, joinChallenge, startChallengeRun } = useChallenge();
   const [timeLeft, setTimeLeft] = useState(5 * 24 * 60 * 60 * 1000); // 5 days in milliseconds
+  
+  const challengeStatus = getChallengeStatus(id || '');
+  const isJoined = challengeStatus.status !== 'not-joined';
+  const isCompleted = challengeStatus.status === 'completed';
+  const isInProgress = challengeStatus.status === 'in-progress';
 
   // Countdown timer effect
   useEffect(() => {
@@ -46,8 +54,17 @@ export default function ChallengeDetail() {
   };
 
   const handleJoinChallenge = () => {
-    setIsJoined(true);
+    if (id) {
+      joinChallenge(id);
+    }
   };
+
+  const handleStartRecording = () => {
+    if (id) {
+      startChallengeRun(id);
+    }
+  };
+
 
   if (!challenge) {
     return (
@@ -117,7 +134,7 @@ export default function ChallengeDetail() {
             </CardContent>
           </Card>
 
-          {/* Join Challenge Card */}
+          {/* Challenge Status Card */}
           {!isJoined ? (
             <Card style={{ ...styles.cardSpacing, ...styles.joinCard }}>
               <CardHeader title="Join Challenge" />
@@ -140,10 +157,74 @@ export default function ChallengeDetail() {
                 </Text>
               </CardContent>
             </Card>
+          ) : isCompleted ? (
+            <Card style={{ ...styles.cardSpacing, ...styles.completedCard }}>
+              <CardHeader
+                title="Challenge Completed!"
+                icon={<Ionicons name="checkmark-circle" size={18} color="#10b981" />}
+              />
+              <CardContent>
+                <Text style={styles.completedText}>
+                  Congratulations! You've completed this challenge.
+                </Text>
+                {challengeStatus.runData && (
+                  <View style={styles.resultStats}>
+                    <View style={styles.resultItem}>
+                      <Text style={styles.resultValue}>
+                        {RunCalculationService.formatDuration(challengeStatus.runData.duration)}
+                      </Text>
+                      <Text style={styles.resultLabel}>Your Time</Text>
+                    </View>
+                    <View style={styles.resultItem}>
+                      <Text style={styles.resultValue}>
+                        {RunCalculationService.formatDistance(challengeStatus.runData.distance)}
+                      </Text>
+                      <Text style={styles.resultLabel}>Distance</Text>
+                    </View>
+                    <View style={styles.resultItem}>
+                      <Text style={styles.resultValue}>
+                        {challengeStatus.runData.pace}
+                      </Text>
+                      <Text style={styles.resultLabel}>Pace/km</Text>
+                    </View>
+                  </View>
+                )}
+                <Text style={styles.resultNote}>
+                  Results have been submitted. Check back later for final rankings!
+                </Text>
+              </CardContent>
+            </Card>
+          ) : isInProgress ? (
+            <Card style={{ ...styles.cardSpacing, ...styles.inProgressCard }}>
+              <CardHeader
+                title="Challenge In Progress"
+                icon={<Ionicons name="time" size={18} color="#f59e0b" />}
+              />
+              <CardContent>
+                <Text style={styles.inProgressText}>
+                  Your run is currently in progress. Complete your recording to
+                  submit your result!
+                </Text>
+                <Link
+                  href={{ pathname: "/record", params: { id: challenge.id } }}
+                  asChild
+                >
+                  <Pressable style={styles.continueButton}>
+                    <Ionicons
+                      name="arrow-forward"
+                      size={16}
+                      color="white"
+                      style={{ marginRight: 8 }}
+                    />
+                    <Text style={styles.continueButtonText}>Continue Recording</Text>
+                  </Pressable>
+                </Link>
+              </CardContent>
+            </Card>
           ) : (
             <Card style={{ ...styles.cardSpacing, ...styles.joinedCard }}>
               <CardHeader
-                title="Joined!"
+                title="Ready to Run!"
                 icon={<Ionicons name="trophy" size={18} color="#22c55e" />}
               />
               <CardContent>
@@ -155,7 +236,10 @@ export default function ChallengeDetail() {
                   href={{ pathname: "/record", params: { id: challenge.id } }}
                   asChild
                 >
-                  <Pressable style={styles.recordButton}>
+                  <Pressable 
+                    style={styles.recordButton}
+                    onPress={handleStartRecording}
+                  >
                     <Ionicons
                       name="play"
                       size={16}
@@ -439,5 +523,67 @@ const styles = StyleSheet.create({
   participantStatus: {
     ...typography.meta,
     marginTop: 2,
+  },
+  // Completed challenge card
+  completedCard: {
+    borderColor: "#10b981",
+    borderWidth: 1,
+    backgroundColor: "rgba(16, 185, 129, 0.05)",
+  },
+  completedText: {
+    ...typography.body,
+    marginBottom: spacing.lg,
+    color: "#059669",
+  },
+  resultStats: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    marginBottom: spacing.lg,
+    padding: spacing.md,
+    backgroundColor: "rgba(16, 185, 129, 0.1)",
+    borderRadius: 8,
+  },
+  resultItem: {
+    alignItems: "center",
+  },
+  resultValue: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#059669",
+  },
+  resultLabel: {
+    ...typography.meta,
+    marginTop: 4,
+    fontSize: 12,
+  },
+  resultNote: {
+    ...typography.meta,
+    textAlign: "center",
+    fontStyle: "italic",
+  },
+  // In-progress challenge card
+  inProgressCard: {
+    borderColor: "#f59e0b",
+    borderWidth: 1,
+    backgroundColor: "rgba(245, 158, 11, 0.05)",
+  },
+  inProgressText: {
+    ...typography.body,
+    marginBottom: spacing.lg,
+    color: "#d97706",
+  },
+  continueButton: {
+    backgroundColor: "#f59e0b",
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderRadius: borderRadius.lg,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  continueButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
   },
 });
