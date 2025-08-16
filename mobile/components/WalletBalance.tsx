@@ -1,10 +1,16 @@
-import React, { useState } from 'react';
-import { View, Text, Pressable, StyleSheet, Alert } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import { colors, spacing, typography, shadows, borderRadius } from '../app/theme';
-import { Card, CardHeader, CardContent } from './ui';
-import { useBalance } from '../app/contexts/balanceContext';
+import React, { useState } from "react";
+import { View, Text, Pressable, StyleSheet, Alert } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import {
+  colors,
+  spacing,
+  typography,
+  shadows,
+  borderRadius,
+} from "../app/theme";
+import { Card, CardHeader, CardContent } from "./ui";
+import { useBalance } from "../contexts/balanceContext";
 
 interface WalletBalanceProps {
   style?: any;
@@ -16,34 +22,34 @@ const WalletBalance: React.FC<WalletBalanceProps> = ({ style }) => {
 
   const handleCashOut = async () => {
     if (!hasBalance()) {
-      Alert.alert('No Balance', 'You don\'t have any balance to cash out.');
+      Alert.alert("No Balance", "You don't have any balance to cash out.");
       return;
     }
 
     Alert.alert(
-      'Cash Out All Winnings',
+      "Cash Out All Winnings",
       `Are you sure you want to cash out ${balance.totalBalance.toFixed(2)} USDC to your wallet?`,
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: "Cancel", style: "cancel" },
         {
-          text: 'Cash Out',
+          text: "Cash Out",
           onPress: async () => {
             setIsLoading(true);
             try {
               cashOutBalance();
               Alert.alert(
-                'Cash Out Successful!',
+                "Cash Out Successful!",
                 `${balance.totalBalance.toFixed(2)} USDC has been sent to your wallet. It may take a few minutes to appear.`,
-                [{ text: 'OK' }]
+                [{ text: "OK" }],
               );
             } catch (error) {
-              Alert.alert('Error', 'Failed to cash out. Please try again.');
+              Alert.alert("Error", "Failed to cash out. Please try again.");
             } finally {
               setIsLoading(false);
             }
           },
         },
-      ]
+      ],
     );
   };
 
@@ -59,7 +65,7 @@ const WalletBalance: React.FC<WalletBalanceProps> = ({ style }) => {
         {/* Main Balance Display */}
         <View style={styles.balanceContainer}>
           <LinearGradient
-            colors={['#DAA520', '#FFD700']}
+            colors={["#DAA520", "#FFD700"]}
             style={styles.balanceGradient}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
@@ -71,13 +77,20 @@ const WalletBalance: React.FC<WalletBalanceProps> = ({ style }) => {
               </Text>
               {hasBalance() && (
                 <Pressable
-                  style={[styles.cashOutButton, isLoading && styles.disabledButton]}
+                  style={[
+                    styles.cashOutButton,
+                    isLoading && styles.disabledButton,
+                  ]}
                   onPress={handleCashOut}
                   disabled={isLoading}
                 >
-                  <Ionicons name="arrow-forward-circle" size={16} color="white" />
+                  <Ionicons
+                    name="arrow-forward-circle"
+                    size={16}
+                    color="white"
+                  />
                   <Text style={styles.cashOutButtonText}>
-                    {isLoading ? 'Processing...' : 'Cash Out All'}
+                    {isLoading ? "Processing..." : "Cash Out All"}
                   </Text>
                 </Pressable>
               )}
@@ -88,12 +101,16 @@ const WalletBalance: React.FC<WalletBalanceProps> = ({ style }) => {
         {/* Balance Stats */}
         <View style={styles.statsContainer}>
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>{formatUSDC(balance.totalEarned)}</Text>
+            <Text style={styles.statValue}>
+              {formatUSDC(balance.totalEarned)}
+            </Text>
             <Text style={styles.statLabel}>Total Earned</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>{formatUSDC(balance.totalCashedOut)}</Text>
+            <Text style={styles.statValue}>
+              {formatUSDC(balance.totalCashedOut)}
+            </Text>
             <Text style={styles.statLabel}>Total Cashed Out</Text>
           </View>
         </View>
@@ -109,9 +126,11 @@ const WalletBalance: React.FC<WalletBalanceProps> = ({ style }) => {
                 <View key={transaction.id} style={styles.transactionItem}>
                   <View style={styles.transactionIcon}>
                     <Ionicons
-                      name={transaction.type === 'win' ? 'trophy' : 'arrow-forward'}
+                      name={
+                        transaction.type === "win" ? "trophy" : "arrow-forward"
+                      }
                       size={14}
-                      color={transaction.type === 'win' ? '#DAA520' : '#10b981'}
+                      color={transaction.type === "win" ? "#DAA520" : "#10b981"}
                     />
                   </View>
                   <View style={styles.transactionDetails}>
@@ -126,11 +145,12 @@ const WalletBalance: React.FC<WalletBalanceProps> = ({ style }) => {
                     style={[
                       styles.transactionAmount,
                       {
-                        color: transaction.type === 'win' ? '#22c55e' : '#6b7280',
+                        color:
+                          transaction.type === "win" ? "#22c55e" : "#6b7280",
                       },
                     ]}
                   >
-                    {transaction.type === 'win' ? '+' : '-'}
+                    {transaction.type === "win" ? "+" : "-"}
                     {formatUSDC(transaction.amount)}
                   </Text>
                 </View>
@@ -141,7 +161,11 @@ const WalletBalance: React.FC<WalletBalanceProps> = ({ style }) => {
         {/* Empty State */}
         {balance.totalEarned === 0 && (
           <View style={styles.emptyState}>
-            <Ionicons name="trophy-outline" size={32} color={colors.textMuted} />
+            <Ionicons
+              name="trophy-outline"
+              size={32}
+              color={colors.textMuted}
+            />
             <Text style={styles.emptyTitle}>No Winnings Yet</Text>
             <Text style={styles.emptyDescription}>
               Win challenges to start earning USDC rewards!
@@ -162,72 +186,72 @@ const styles = StyleSheet.create({
   },
   balanceGradient: {
     borderRadius: borderRadius.lg,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   balanceContent: {
     padding: spacing.lg,
-    alignItems: 'center',
+    alignItems: "center",
   },
   balanceLabel: {
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: "rgba(255, 255, 255, 0.9)",
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
     marginBottom: spacing.xs,
-    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowColor: "rgba(0,0,0,0.3)",
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
   },
   balanceAmount: {
-    color: 'white',
+    color: "white",
     fontSize: 28,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: spacing.md,
-    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowColor: "rgba(0,0,0,0.3)",
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
   },
   cashOutButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.lg,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderColor: "rgba(255, 255, 255, 0.3)",
   },
   disabledButton: {
     opacity: 0.6,
   },
   cashOutButtonText: {
-    color: 'white',
+    color: "white",
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     marginLeft: spacing.xs,
-    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowColor: "rgba(0,0,0,0.3)",
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
   },
   statsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: spacing.md,
     marginBottom: spacing.md,
   },
   statItem: {
     flex: 1,
-    alignItems: 'center',
+    alignItems: "center",
   },
   statValue: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.text,
     marginBottom: 4,
   },
   statLabel: {
     fontSize: 12,
     color: colors.textMuted,
-    textAlign: 'center',
+    textAlign: "center",
   },
   statDivider: {
     width: 1,
@@ -242,13 +266,13 @@ const styles = StyleSheet.create({
   },
   transactionsTitle: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.text,
     marginBottom: spacing.sm,
   },
   transactionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: spacing.xs,
   },
   transactionIcon: {
@@ -256,8 +280,8 @@ const styles = StyleSheet.create({
     height: 28,
     borderRadius: 14,
     backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginRight: spacing.sm,
   },
   transactionDetails: {
@@ -274,15 +298,15 @@ const styles = StyleSheet.create({
   },
   transactionAmount: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   emptyState: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingVertical: spacing.xl,
   },
   emptyTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.textMuted,
     marginTop: spacing.sm,
     marginBottom: spacing.xs,
@@ -290,7 +314,7 @@ const styles = StyleSheet.create({
   emptyDescription: {
     fontSize: 14,
     color: colors.textMuted,
-    textAlign: 'center',
+    textAlign: "center",
     lineHeight: 20,
   },
 });

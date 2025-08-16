@@ -1,7 +1,7 @@
 import { RunCalculationService } from "./runCalculationService";
-import { timeManager } from "../../constants/timeManager";
-import { Challenge } from "../../constants/types";
+import { Challenge } from "../constants/types";
 import { UserBalanceService } from "./userBalanceService";
+import { timeManager } from "../helpers/timeManager";
 
 export interface ChallengeRunData {
   coords: { latitude: number; longitude: number; timestamp: number }[];

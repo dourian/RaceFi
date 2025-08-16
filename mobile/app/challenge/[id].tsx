@@ -11,7 +11,7 @@ import {
   Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { ApiService } from "../../src/services/apiService";
+import { ApiService } from "../../services/apiService";
 import { Challenge } from "../../constants/types";
 import { colors, spacing, typography, shadows, borderRadius } from "../theme";
 import {
@@ -25,12 +25,12 @@ import {
   Separator,
 } from "../../components/ui";
 import React, { useState, useEffect } from "react";
-import { useChallenge } from "../contexts/challengeContext";
-import { ChallengeService } from "../../src/services/challengeService";
-import { RunCalculationService } from "../../src/services/runCalculationService";
-import LeaderboardService from "../../src/services/leaderboardService";
+import { useChallenge } from "../../contexts/challengeContext";
+import { ChallengeService } from "../../services/challengeService";
+import { RunCalculationService } from "../../services/runCalculationService";
+import LeaderboardService from "../../services/leaderboardService";
 import StaticRoutePreview from "../../components/StaticRoutePreview";
-import { useAppTime, getCurrentAppTime } from "../../constants/timeManager";
+import { useAppTime, getCurrentAppTime } from "../../helpers/timeManager";
 
 export default function ChallengeDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();

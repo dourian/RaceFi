@@ -1,16 +1,23 @@
 import { useEffect, useRef, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Text, StyleSheet, Pressable, View, Animated, Dimensions } from "react-native";
+import {
+  Text,
+  StyleSheet,
+  Pressable,
+  View,
+  Animated,
+  Dimensions,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, spacing, typography, shadows } from "./theme";
-import { useLocation } from "./contexts/locationContext";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { useChallenge } from "./contexts/challengeContext";
-import { RunCalculationService } from "../src/services/runCalculationService";
-import { ChallengeService } from "../src/services/challengeService";
-import { NavigationService } from "../src/services/navigationService";
 import RecordRunMap from "../components/recordRunMap";
 import RecordRunCompleteSheet from "../components/recordRunCompleteSheet";
+import { useChallenge } from "../contexts/challengeContext";
+import { useLocation } from "../contexts/locationContext";
+import { ChallengeService } from "../services/challengeService";
+import { NavigationService } from "../services/navigationService";
+import { RunCalculationService } from "../services/runCalculationService";
 
 export default function RecordRun() {
   const router = useRouter();
@@ -27,9 +34,9 @@ export default function RecordRun() {
     checkLocationServices,
     resetLocation,
   } = useLocation();
-  
+
   const isChallenge = !!challengeId;
-  
+
   const [coords, setCoords] = useState<
     { latitude: number; longitude: number; timestamp: number; speed?: number }[]
   >([]);
@@ -38,7 +45,12 @@ export default function RecordRun() {
   const [now, setNow] = useState<number>(Date.now());
   const [runCompleted, setRunCompleted] = useState(false);
   const [completedRunData, setCompletedRunData] = useState<{
-    coords: { latitude: number; longitude: number; timestamp: number; speed?: number }[];
+    coords: {
+      latitude: number;
+      longitude: number;
+      timestamp: number;
+      speed?: number;
+    }[];
     duration: number;
     distance: number;
     pace: string;
@@ -51,28 +63,33 @@ export default function RecordRun() {
   // Store location updates in coords when location changes
   useEffect(() => {
     if (location && watching) {
-      console.log('New location received:', location);
+      console.log("New location received:", location);
       setCoords((prev) => {
         // Avoid duplicate entries by checking if the new location is significantly different
         const lastCoord = prev[prev.length - 1];
-        if (!lastCoord || 
-            Math.abs(lastCoord.latitude - location.latitude) > 0.00005 ||
-            Math.abs(lastCoord.longitude - location.longitude) > 0.00005 ||
-            location.timestamp - lastCoord.timestamp > 2000) {
-          console.log('Adding new coordinate:', {
+        if (
+          !lastCoord ||
+          Math.abs(lastCoord.latitude - location.latitude) > 0.00005 ||
+          Math.abs(lastCoord.longitude - location.longitude) > 0.00005 ||
+          location.timestamp - lastCoord.timestamp > 2000
+        ) {
+          console.log("Adding new coordinate:", {
             latitude: location.latitude,
             longitude: location.longitude,
             timestamp: location.timestamp,
-            speed: location.speed
+            speed: location.speed,
           });
-          return [...prev, {
-            latitude: location.latitude,
-            longitude: location.longitude,
-            timestamp: location.timestamp,
-            speed: location.speed
-          }];
+          return [
+            ...prev,
+            {
+              latitude: location.latitude,
+              longitude: location.longitude,
+              timestamp: location.timestamp,
+              speed: location.speed,
+            },
+          ];
         }
-        console.log('Skipping duplicate/similar coordinate');
+        console.log("Skipping duplicate/similar coordinate");
         return prev;
       });
     }
@@ -93,7 +110,7 @@ export default function RecordRun() {
     if (runCompleted) {
       const timeoutId = setTimeout(() => {
         Animated.timing(mapTranslateY, {
-          toValue: -Dimensions.get('window').height * 0.25,
+          toValue: -Dimensions.get("window").height * 0.25,
           duration: 250,
           useNativeDriver: true,
         }).start();
@@ -109,53 +126,58 @@ export default function RecordRun() {
   }, [runCompleted, mapTranslateY]);
 
   const start = async () => {
-    console.log('Start button pressed');
+    console.log("Start button pressed");
     // Request permission if not granted
     if (locationPermission !== "granted") {
-      console.log('Requesting location permission');
+      console.log("Requesting location permission");
       const granted = await requestLocationPermission();
       if (!granted) {
-        console.log('Permission denied');
+        console.log("Permission denied");
         return;
       }
     }
-    
+
     // Check location services
-    console.log('Checking location services');
+    console.log("Checking location services");
     const servicesEnabled = await checkLocationServices();
     if (!servicesEnabled) {
-      console.log('Location services not enabled');
+      console.log("Location services not enabled");
       return;
     }
-    
-    console.log('Starting recording...');
-    
+
+    console.log("Starting recording...");
+
     // Reset location context to get fresh starting point
     resetLocation();
-    
+
     setCoords([]);
     const startedAt = Date.now();
-    console.log('Start time set to:', startedAt);
+    console.log("Start time set to:", startedAt);
     setStartTime(startedAt);
     setNow(startedAt);
     setWatching(true);
 
     // Start ticking timer for live elapsed seconds
     if (timerRef.current) {
-      console.log('Clearing existing timer');
+      console.log("Clearing existing timer");
       clearInterval(timerRef.current as any);
     }
-    console.log('Starting new timer');
+    console.log("Starting new timer");
     timerRef.current = setInterval(() => {
       const currentTime = Date.now();
-      console.log('Timer tick - current time:', currentTime, 'elapsed:', Math.floor((currentTime - startedAt) / 1000));
+      console.log(
+        "Timer tick - current time:",
+        currentTime,
+        "elapsed:",
+        Math.floor((currentTime - startedAt) / 1000),
+      );
       setNow(currentTime);
     }, 1000) as any;
 
     // Start location updates using the context
-    console.log('Calling startLocationUpdates...');
+    console.log("Calling startLocationUpdates...");
     await startLocationUpdates();
-    console.log('startLocationUpdates completed');
+    console.log("startLocationUpdates completed");
   };
 
   const stop = () => {
@@ -165,19 +187,22 @@ export default function RecordRun() {
       timerRef.current = null;
     }
     setWatching(false);
-    
+
     // Prepare run completion data using service
-    const runMetrics = RunCalculationService.calculateRunMetrics(coords, elapsedSec);
+    const runMetrics = RunCalculationService.calculateRunMetrics(
+      coords,
+      elapsedSec,
+    );
     // Compute max speed (km/h) using recorded speed readings
     let maxKmh = undefined as number | undefined;
     for (let i = 0; i < coords.length; i++) {
       const s = coords[i]?.speed;
-      if (typeof s === 'number' && isFinite(s)) {
+      if (typeof s === "number" && isFinite(s)) {
         const kmh = s * 3.6;
         if (maxKmh === undefined || kmh > maxKmh) maxKmh = kmh;
       }
     }
-    
+
     setCompletedRunData({
       coords,
       duration: runMetrics.duration,
@@ -197,15 +222,15 @@ export default function RecordRun() {
     const seconds = elapsedSec % 60;
     if (hours > 0) {
       return [
-        hours.toString().padStart(2, '0'),
-        minutes.toString().padStart(2, '0'),
-        seconds.toString().padStart(2, '0')
-      ].join(':');
+        hours.toString().padStart(2, "0"),
+        minutes.toString().padStart(2, "0"),
+        seconds.toString().padStart(2, "0"),
+      ].join(":");
     } else {
       return [
-        minutes.toString().padStart(2, '0'),
-        seconds.toString().padStart(2, '0')
-      ].join(':');
+        minutes.toString().padStart(2, "0"),
+        seconds.toString().padStart(2, "0"),
+      ].join(":");
     }
   }
   const elapsedSec = startTime ? Math.floor((now - startTime) / 1000) : 0;
@@ -213,24 +238,27 @@ export default function RecordRun() {
 
   const handleSubmitRun = () => {
     if (!completedRunData) return;
-    
-    console.log('Submitting run:', completedRunData);
-    
+
+    console.log("Submitting run:", completedRunData);
+
     // If this is a challenge run, update the challenge status
     if (isChallenge && challengeId) {
-      const challengeRunData = ChallengeService.createRunData(coords, elapsedSec);
+      const challengeRunData = ChallengeService.createRunData(
+        coords,
+        elapsedSec,
+      );
       completeChallengeRun(challengeId, {
         ...challengeRunData,
         completedAt: new Date(),
       });
-      
+
       // Use navigation service with run data
       NavigationService.handleChallengeCompletion(
-        router, 
-        challengeId, 
-        completedRunData.duration, 
-        completedRunData.distance, 
-        completedRunData.pace
+        router,
+        challengeId,
+        completedRunData.duration,
+        completedRunData.distance,
+        completedRunData.pace,
       );
     } else {
       // Use navigation service for regular runs with run data
@@ -238,7 +266,7 @@ export default function RecordRun() {
         router,
         completedRunData.duration,
         completedRunData.distance,
-        completedRunData.pace
+        completedRunData.pace,
       );
     }
   };
@@ -256,310 +284,330 @@ export default function RecordRun() {
   // COMPONENTS KEEP THIS COMMENT I NEED TO KEEP TRACK
 
   const BackButton = () => {
-    return <Pressable
-      onPress={() => setTimeout(() => router.back(), 100)}
-      style={({ pressed }) => [styles.backButton, pressed && { transform: [{ scale: 0.95 }] }]}
-    >
-      <Ionicons name="chevron-back" size={32} color={colors.text} />
-    </Pressable>
-  }
-
-
     return (
-        <SafeAreaView style={styles.container} edges={["left", "right"]}>
-        <BackButton />
-        {error && (
-          <View style={styles.errorContainer}>
-            <Text style={styles.errorText}>{error}</Text>
-          </View>
-        )}
-  
-        {/* Map Section - takes up most of the screen */}
-        <Animated.View style={[styles.mapContainer, { transform: [{ translateY: mapTranslateY }] }]}>
-          <RecordRunMap coords={coords} watching={watching} recenterToRouteTrigger={recenterKey}/>
-        </Animated.View>
-  
-        {/* Control Section or Completion Sheet */}
-        {!runCompleted && (
-          <View style={styles.bottomAction}>
-            <Pressable
-              style={({ pressed }) => [
-                styles.circleButton,
-                watching ? styles.circleButtonStop : styles.circleButtonStart,
-                pressed && { transform: [{ scale: 0.95 }] },
-              ]}
-              onPress={watching ? stop : start}
-              disabled={locationPermission !== "granted" || isLoading}
-            >
-              <Ionicons name={watching ? "stop" : "play"} size={40} color="#ffffff" />
-            </Pressable>
+      <Pressable
+        onPress={() => setTimeout(() => router.back(), 100)}
+        style={({ pressed }) => [
+          styles.backButton,
+          pressed && { transform: [{ scale: 0.95 }] },
+        ]}
+      >
+        <Ionicons name="chevron-back" size={32} color={colors.text} />
+      </Pressable>
+    );
+  };
 
-            {/* Stats Section - below the button */}
-            <View style={styles.primaryStats}>
-              <View style={styles.primaryStatItem}>
-                <Text style={styles.primaryStatValue}>{elapsedTimeFormatted}</Text>
-                <Text style={styles.primaryStatLabel}>Time</Text>
-              </View>
-              <View style={styles.primaryStatItem}>
-                <Text style={styles.primaryStatValue}>
-                  {coords.length > 1 ? RunCalculationService.calculatePace(coords) : "--:--"}
-                </Text>
-                <Text style={styles.primaryStatLabel}>Pace/km</Text>
-              </View>
-              <View style={styles.primaryStatItem}>
-                <Text style={styles.primaryStatValue}>
-                  {coords.length > 1
-                    ? `${RunCalculationService.formatDistance(RunCalculationService.calculateDistance(coords))}`
-                    : "0.00km"}
-                </Text>
-                <Text style={styles.primaryStatLabel}>Distance</Text>
-              </View>
+  return (
+    <SafeAreaView style={styles.container} edges={["left", "right"]}>
+      <BackButton />
+      {error && (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
+      )}
+
+      {/* Map Section - takes up most of the screen */}
+      <Animated.View
+        style={[
+          styles.mapContainer,
+          { transform: [{ translateY: mapTranslateY }] },
+        ]}
+      >
+        <RecordRunMap
+          coords={coords}
+          watching={watching}
+          recenterToRouteTrigger={recenterKey}
+        />
+      </Animated.View>
+
+      {/* Control Section or Completion Sheet */}
+      {!runCompleted && (
+        <View style={styles.bottomAction}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.circleButton,
+              watching ? styles.circleButtonStop : styles.circleButtonStart,
+              pressed && { transform: [{ scale: 0.95 }] },
+            ]}
+            onPress={watching ? stop : start}
+            disabled={locationPermission !== "granted" || isLoading}
+          >
+            <Ionicons
+              name={watching ? "stop" : "play"}
+              size={40}
+              color="#ffffff"
+            />
+          </Pressable>
+
+          {/* Stats Section - below the button */}
+          <View style={styles.primaryStats}>
+            <View style={styles.primaryStatItem}>
+              <Text style={styles.primaryStatValue}>
+                {elapsedTimeFormatted}
+              </Text>
+              <Text style={styles.primaryStatLabel}>Time</Text>
+            </View>
+            <View style={styles.primaryStatItem}>
+              <Text style={styles.primaryStatValue}>
+                {coords.length > 1
+                  ? RunCalculationService.calculatePace(coords)
+                  : "--:--"}
+              </Text>
+              <Text style={styles.primaryStatLabel}>Pace/km</Text>
+            </View>
+            <View style={styles.primaryStatItem}>
+              <Text style={styles.primaryStatValue}>
+                {coords.length > 1
+                  ? `${RunCalculationService.formatDistance(RunCalculationService.calculateDistance(coords))}`
+                  : "0.00km"}
+              </Text>
+              <Text style={styles.primaryStatLabel}>Distance</Text>
             </View>
           </View>
-        )}
+        </View>
+      )}
 
-        {runCompleted && completedRunData && (
-          <RecordRunCompleteSheet
-            visible={runCompleted}
-            coords={completedRunData.coords}
-            durationSeconds={completedRunData.duration}
-            distanceMeters={completedRunData.distance}
-            pace={completedRunData.pace}
-            onSubmit={handleSubmitRun}
-            onReset={handleResetRun}
-            challengeId={challengeId}
-            maxSpeedKmh={completedRunData.maxSpeedKmh}
-          />
-        )}
-      </SafeAreaView>
-    );
+      {runCompleted && completedRunData && (
+        <RecordRunCompleteSheet
+          visible={runCompleted}
+          coords={completedRunData.coords}
+          durationSeconds={completedRunData.duration}
+          distanceMeters={completedRunData.distance}
+          pace={completedRunData.pace}
+          onSubmit={handleSubmitRun}
+          onReset={handleResetRun}
+          challengeId={challengeId}
+          maxSpeedKmh={completedRunData.maxSpeedKmh}
+        />
+      )}
+    </SafeAreaView>
+  );
 }
 
 const styles = StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.background,
-    },
-    backButton: {
-      position: 'absolute',
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      top: 56,
-      left: 20,
-      width: 52,
-      height: 52,
-      backgroundColor: 'white',
-      borderRadius: 12,
-      zIndex: 1000,
-      ...shadows.button,
-      shadowOpacity: 0.1,
-      elevation: 4,
-    },
-    scrollContainer: {
-      flex: 1,
-    },
-    mapContainer: {
-      flex: 1,
-      overflow: 'hidden',
-      ...shadows.button,
-      shadowOpacity: 0.1,
-      elevation: 4,
-    },
-    map: {
-      flex: 1,
-    },
-    statsContainer: {
-      paddingHorizontal: spacing.lg,
-      paddingBottom: spacing.lg,
-    },
-    primaryStats: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      backgroundColor: colors.surface,
-      padding: spacing.md,
-      minHeight: 100,
-      ...shadows.button,
-      shadowOpacity: 0.1,
-      elevation: 4,
-      borderRadius: 12,
-    },
-    primaryStatItem: {
-      alignItems: 'center',
-      flex: 1,
-    },
-    primaryStatValue: {
-      fontSize: 24,
-      fontWeight: 'bold',
-      color: colors.accentStrong,
-    },
-    primaryStatLabel: {
-      fontSize: 12,
-      color: colors.textMuted,
-      marginTop: 4,
-      textTransform: 'uppercase',
-      letterSpacing: 0.5,
-    },
-    secondaryStats: {
-      backgroundColor: colors.surface,
-      borderRadius: 12,
-      padding: spacing.md,
-      marginBottom: spacing.md,
-    },
-    statRow: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      paddingVertical: 8,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: "#e6e6ea",
-    },
-    statLabel: { 
-      ...typography.meta,
-      color: colors.textMuted,
-    },
-    statValue: { 
-      ...typography.body,
-      fontWeight: '500',
-    },
-    mono: { fontFamily: "Menlo", fontSize: 11 },
-    coordsList: {
-      backgroundColor: colors.surface,
-      borderRadius: 12,
-      padding: spacing.md,
-      marginBottom: spacing.md,
-    },
-    coordsTitle: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: colors.text,
-      marginBottom: spacing.sm,
-    },
-    coordItem: {
-      paddingVertical: 2,
-      color: colors.textMuted,
-      fontSize: 11,
-    },
-    errorContainer: {
-      backgroundColor: "#ffebee",
-      borderRadius: 8,
-      padding: spacing.md,
-      marginHorizontal: spacing.lg,
-      marginBottom: spacing.md,
-      borderLeftWidth: 4,
-      borderLeftColor: "#f44336",
-    },
-    errorText: {
-      color: "#d32f2f",
-      fontSize: 14,
-      fontWeight: "500",
-    },
-    bottomAction: {
-      position: 'absolute',
-      bottom: "5%",
-      left: '5%',
-      width: '90%',
-      alignItems: "center",
-      backgroundColor: 'transparent',
-      flexDirection: 'column',
-      gap: spacing.xl,
-    },
-    circleButton: {
-      width: 80,
-      height: 80,
-      borderRadius: 40,
-      justifyContent: "center",
-      alignItems: "center",
-      ...shadows.button,
-      shadowOpacity: 0.1,
-      shadowRadius: 8,
-      elevation: 8,
-    },
-    circleButtonStart: {
-      backgroundColor: colors.accentStrong,
-      borderWidth: 0,
-    },
-    circleButtonStop: {
-      backgroundColor: "#FF4444",
-      borderWidth: 0,
-    },
-    buttonLabel: {
-      marginTop: spacing.sm,
-      ...typography.body,
-      fontWeight: "600" as const,
-      color: colors.text,
-    },
-    // Completion screen styles
-    completionTitle: {
-      ...typography.title,
-      color: colors.text,
-      textAlign: 'center',
-      marginTop: spacing.lg,
-      marginBottom: spacing.xs,
-    },
-    completionSubtitle: {
-      ...typography.body,
-      color: colors.textMuted,
-      textAlign: 'center',
-      marginBottom: spacing.lg,
-    },
-    summaryContainer: {
-      backgroundColor: colors.surface,
-      marginHorizontal: spacing.lg,
-      borderRadius: 12,
-      padding: spacing.lg,
-      marginBottom: spacing.lg,
-      ...shadows.button,
-      shadowOpacity: 0.05,
-      elevation: 2,
-    },
-    summaryTitle: {
-      fontSize: 18,
-      fontWeight: '600',
-      color: colors.text,
-      marginBottom: spacing.md,
-      textAlign: 'center',
-    },
-    statsGrid: {
-      flexDirection: 'row',
-      justifyContent: 'space-around',
-    },
-    statItem: {
-      alignItems: 'center',
-      flex: 1,
-    },
-    actionContainer: {
-      paddingHorizontal: spacing.lg,
-      paddingBottom: spacing.lg,
-      gap: spacing.md,
-    },
-    actionButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingVertical: spacing.lg,
-      paddingHorizontal: spacing.xl,
-      borderRadius: 12,
-      ...shadows.button,
-      shadowOpacity: 0.2,
-      elevation: 4,
-      gap: spacing.sm,
-    },
-    submitButton: {
-      backgroundColor: colors.accentStrong,
-    },
-    resetButton: {
-      backgroundColor: colors.surface,
-      borderWidth: 2,
-      borderColor: colors.border,
-    },
-    actionButtonText: {
-      fontSize: 16,
-      fontWeight: '600',
-      color: 'white',
-    },
-    resetButtonText: {
-      color: colors.text,
-    },
-  });
-  
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  backButton: {
+    position: "absolute",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    top: 56,
+    left: 20,
+    width: 52,
+    height: 52,
+    backgroundColor: "white",
+    borderRadius: 12,
+    zIndex: 1000,
+    ...shadows.button,
+    shadowOpacity: 0.1,
+    elevation: 4,
+  },
+  scrollContainer: {
+    flex: 1,
+  },
+  mapContainer: {
+    flex: 1,
+    overflow: "hidden",
+    ...shadows.button,
+    shadowOpacity: 0.1,
+    elevation: 4,
+  },
+  map: {
+    flex: 1,
+  },
+  statsContainer: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.lg,
+  },
+  primaryStats: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    padding: spacing.md,
+    minHeight: 100,
+    ...shadows.button,
+    shadowOpacity: 0.1,
+    elevation: 4,
+    borderRadius: 12,
+  },
+  primaryStatItem: {
+    alignItems: "center",
+    flex: 1,
+  },
+  primaryStatValue: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: colors.accentStrong,
+  },
+  primaryStatLabel: {
+    fontSize: 12,
+    color: colors.textMuted,
+    marginTop: 4,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  secondaryStats: {
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+  },
+  statRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#e6e6ea",
+  },
+  statLabel: {
+    ...typography.meta,
+    color: colors.textMuted,
+  },
+  statValue: {
+    ...typography.body,
+    fontWeight: "500",
+  },
+  mono: { fontFamily: "Menlo", fontSize: 11 },
+  coordsList: {
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+  },
+  coordsTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: colors.text,
+    marginBottom: spacing.sm,
+  },
+  coordItem: {
+    paddingVertical: 2,
+    color: colors.textMuted,
+    fontSize: 11,
+  },
+  errorContainer: {
+    backgroundColor: "#ffebee",
+    borderRadius: 8,
+    padding: spacing.md,
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+    borderLeftWidth: 4,
+    borderLeftColor: "#f44336",
+  },
+  errorText: {
+    color: "#d32f2f",
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  bottomAction: {
+    position: "absolute",
+    bottom: "5%",
+    left: "5%",
+    width: "90%",
+    alignItems: "center",
+    backgroundColor: "transparent",
+    flexDirection: "column",
+    gap: spacing.xl,
+  },
+  circleButton: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: "center",
+    alignItems: "center",
+    ...shadows.button,
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  circleButtonStart: {
+    backgroundColor: colors.accentStrong,
+    borderWidth: 0,
+  },
+  circleButtonStop: {
+    backgroundColor: "#FF4444",
+    borderWidth: 0,
+  },
+  buttonLabel: {
+    marginTop: spacing.sm,
+    ...typography.body,
+    fontWeight: "600" as const,
+    color: colors.text,
+  },
+  // Completion screen styles
+  completionTitle: {
+    ...typography.title,
+    color: colors.text,
+    textAlign: "center",
+    marginTop: spacing.lg,
+    marginBottom: spacing.xs,
+  },
+  completionSubtitle: {
+    ...typography.body,
+    color: colors.textMuted,
+    textAlign: "center",
+    marginBottom: spacing.lg,
+  },
+  summaryContainer: {
+    backgroundColor: colors.surface,
+    marginHorizontal: spacing.lg,
+    borderRadius: 12,
+    padding: spacing.lg,
+    marginBottom: spacing.lg,
+    ...shadows.button,
+    shadowOpacity: 0.05,
+    elevation: 2,
+  },
+  summaryTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: colors.text,
+    marginBottom: spacing.md,
+    textAlign: "center",
+  },
+  statsGrid: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+  },
+  statItem: {
+    alignItems: "center",
+    flex: 1,
+  },
+  actionContainer: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.lg,
+    gap: spacing.md,
+  },
+  actionButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.xl,
+    borderRadius: 12,
+    ...shadows.button,
+    shadowOpacity: 0.2,
+    elevation: 4,
+    gap: spacing.sm,
+  },
+  submitButton: {
+    backgroundColor: colors.accentStrong,
+  },
+  resetButton: {
+    backgroundColor: colors.surface,
+    borderWidth: 2,
+    borderColor: colors.border,
+  },
+  actionButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "white",
+  },
+  resetButtonText: {
+    color: colors.text,
+  },
+});

@@ -16,7 +16,7 @@ import { router, Stack } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { colors, spacing, typography, shadows } from "./theme";
-import { ApiService, ChallengeCreateRequest } from "../src/services/apiService";
+import { ApiService, ChallengeCreateRequest } from "../services/apiService";
 
 export default function CreateChallengeScreen() {
   const [formData, setFormData] = useState({

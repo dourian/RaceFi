@@ -1,37 +1,24 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
-import { useAuth } from '../lib/auth-context';
+import { useAuth } from '../../contexts/authContext';
 
-const SignUp: React.FC = () => {
+const SignIn: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const { signUp } = useAuth();
+  const { signIn, continueAsGuest } = useAuth();
 
-  const handleSignUp = async () => {
-    if (!email || !password || !confirmPassword) {
+  const handleSignIn = async () => {
+    if (!email || !password) {
       Alert.alert('Error', 'Please fill in all fields');
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
-      return;
-    }
-
-    if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters long');
       return;
     }
 
     setLoading(true);
     try {
-      const { error } = await signUp(email, password);
+      const { error } = await signIn(email, password);
       if (error) {
         Alert.alert('Error', error.message);
-      } else {
-        Alert.alert('Success', 'Please check your email to confirm your account');
       }
     } catch (error) {
       Alert.alert('Error', 'An unexpected error occurred');
@@ -42,8 +29,8 @@ const SignUp: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Join RaceFi</Text>
-      <Text style={styles.subtitle}>Create your account</Text>
+      <Text style={styles.title}>Welcome to RaceFi</Text>
+      <Text style={styles.subtitle}>Sign in to your account</Text>
       
       <TextInput
         style={styles.input}
@@ -63,24 +50,22 @@ const SignUp: React.FC = () => {
         secureTextEntry
         autoCapitalize="none"
       />
-
-      <TextInput
-        style={styles.input}
-        placeholder="Confirm Password"
-        value={confirmPassword}
-        onChangeText={setConfirmPassword}
-        secureTextEntry
-        autoCapitalize="none"
-      />
       
       <TouchableOpacity
         style={[styles.button, loading && styles.buttonDisabled]}
-        onPress={handleSignUp}
+        onPress={handleSignIn}
         disabled={loading}
       >
         <Text style={styles.buttonText}>
-          {loading ? 'Creating Account...' : 'Sign Up'}
+          {loading ? 'Signing In...' : 'Sign In'}
         </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[styles.guestButton]}
+        onPress={continueAsGuest}
+      >
+        <Text style={styles.guestButtonText}>Continue as Guest</Text>
       </TouchableOpacity>
     </View>
   );
@@ -129,7 +114,21 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  guestButton: {
+    backgroundColor: 'transparent',
+    padding: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#fc5200',
+    marginTop: 15,
+  },
+  guestButtonText: {
+    color: '#fc5200',
+    fontSize: 16,
+    fontWeight: '600',
+  },
 });
 
-export { SignUp };
-export default SignUp;
+export { SignIn };
+export default SignIn;

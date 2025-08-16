@@ -3,20 +3,23 @@
  * Ensures proper prize pool calculations and challenge management
  */
 
-import { Challenge } from '../constants/types';
+import { Challenge } from "../constants/types";
 
 /**
  * Calculate the prize pool based on stake and participants
  * Formula: Prize Pool = Stake × Current Participants
  */
-export function calculatePrizePool(stake: number, participants: number): number {
+export function calculatePrizePool(
+  stake: number,
+  participants: number,
+): number {
   if (stake <= 0) {
-    throw new Error('Stake must be a positive number');
+    throw new Error("Stake must be a positive number");
   }
   if (participants < 0) {
-    throw new Error('Participants cannot be negative');
+    throw new Error("Participants cannot be negative");
   }
-  
+
   return stake * participants;
 }
 
@@ -25,11 +28,14 @@ export function calculatePrizePool(stake: number, participants: number): number 
  * This ensures the prize pool is always accurate
  */
 export function createChallengeWithDynamicPrizePool(
-  baseChallenge: Omit<Challenge, 'prizePool'>
+  baseChallenge: Omit<Challenge, "prizePool">,
 ): Challenge {
   return {
     ...baseChallenge,
-    prizePool: calculatePrizePool(baseChallenge.stake, baseChallenge.participants)
+    prizePool: calculatePrizePool(
+      baseChallenge.stake,
+      baseChallenge.participants,
+    ),
   };
 }
 
@@ -38,17 +44,19 @@ export function createChallengeWithDynamicPrizePool(
  * Use this when someone joins or leaves a challenge
  */
 export function updateParticipants(
-  challenge: Challenge, 
-  newParticipantCount: number
+  challenge: Challenge,
+  newParticipantCount: number,
 ): Challenge {
   if (newParticipantCount > challenge.maxParticipants) {
-    throw new Error(`Cannot exceed maximum participants (${challenge.maxParticipants})`);
+    throw new Error(
+      `Cannot exceed maximum participants (${challenge.maxParticipants})`,
+    );
   }
-  
+
   return {
     ...challenge,
     participants: newParticipantCount,
-    prizePool: calculatePrizePool(challenge.stake, newParticipantCount)
+    prizePool: calculatePrizePool(challenge.stake, newParticipantCount),
   };
 }
 
@@ -64,9 +72,9 @@ export function joinChallenge(challenge: Challenge): Challenge {
  */
 export function leaveChallenge(challenge: Challenge): Challenge {
   if (challenge.participants <= 0) {
-    throw new Error('Cannot leave challenge with no participants');
+    throw new Error("Cannot leave challenge with no participants");
   }
-  
+
   return updateParticipants(challenge, challenge.participants - 1);
 }
 
@@ -79,15 +87,18 @@ export function validateChallengePrizePool(challenge: Challenge): {
   actualPrizePool: number;
   discrepancy: number;
 } {
-  const expectedPrizePool = calculatePrizePool(challenge.stake, challenge.participants);
+  const expectedPrizePool = calculatePrizePool(
+    challenge.stake,
+    challenge.participants,
+  );
   const actualPrizePool = challenge.prizePool;
   const discrepancy = actualPrizePool - expectedPrizePool;
-  
+
   return {
     isValid: discrepancy === 0,
     expectedPrizePool,
     actualPrizePool,
-    discrepancy
+    discrepancy,
   };
 }
 
@@ -106,13 +117,13 @@ export function getChallengeCapacity(challenge: Challenge): {
   const available = maximum - current;
   const percentFull = (current / maximum) * 100;
   const isFull = current >= maximum;
-  
+
   return {
     current,
     maximum,
     available,
     percentFull: Math.round(percentFull * 10) / 10, // Round to 1 decimal place
-    isFull
+    isFull,
   };
 }
 
@@ -136,11 +147,11 @@ export function getPrizePoolStats(challenge: Challenge): {
   const maxPotentialPrizePool = getMaxPotentialPrizePool(challenge);
   const averageStakePerParticipant = challenge.stake; // Same as stake since everyone pays the same
   const potentialIncrease = maxPotentialPrizePool - currentPrizePool;
-  
+
   return {
     currentPrizePool,
     maxPotentialPrizePool,
     averageStakePerParticipant,
-    potentialIncrease
+    potentialIncrease,
   };
 }

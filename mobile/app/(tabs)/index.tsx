@@ -10,10 +10,10 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, spacing, typography, shadows } from "../theme";
-import { useChallenge } from "../contexts/challengeContext";
+import { useChallenge } from "../../contexts/challengeContext";
 import StaticRoutePreview from "../../components/StaticRoutePreview";
-import { useAppTime, getCurrentAppTime } from "../../constants/timeManager";
-import { ApiService } from "../../src/services/apiService";
+import { useAppTime, getCurrentAppTime } from "../../helpers/timeManager";
+import { ApiService } from "../../services/apiService";
 import { Challenge } from "../../constants/types";
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 

@@ -43,7 +43,7 @@ export const haversineMeters = (a: LatLng, b: LatLng) => {
 
 export const buildArrowMarkers = (
   points?: LatLng[],
-  approxIntervalMeters: number = 500
+  approxIntervalMeters: number = 500,
 ) => {
   if (!points || points.length < 2)
     return [] as { coordinate: LatLng; bearing: number }[];
@@ -59,7 +59,7 @@ export const buildArrowMarkers = (
   const MAX_MARKERS = 7; // set cap here
   const markerCount = Math.min(
     MAX_MARKERS,
-    Math.max(1, Math.round(totalDistance / approxIntervalMeters))
+    Math.max(1, Math.round(totalDistance / approxIntervalMeters)),
   );
   const interval = totalDistance / markerCount;
 

@@ -1,7 +1,7 @@
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { AuthWrapper } from "../auth/auth-wrapper";
-import { LocationProvider } from "../contexts/locationContext";
+import { AuthWrapper } from "../../components/auth/AuthWrapper";
+import { LocationProvider } from "../../contexts/locationContext";
 
 export default function TabsLayout() {
   return (
@@ -64,7 +64,11 @@ export default function TabsLayout() {
             options={{
               title: "Profile",
               tabBarIcon: ({ color, size }) => (
-                <Ionicons name="person-outline" size={size ?? 22} color={color} />
+                <Ionicons
+                  name="person-outline"
+                  size={size ?? 22}
+                  color={color}
+                />
               ),
             }}
           />

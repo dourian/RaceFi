@@ -1,13 +1,23 @@
-import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { 
-  UserBalanceService, 
-  UserBalance, 
-  BalanceTransaction 
-} from '../../src/services/userBalanceService';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  ReactNode,
+  useEffect,
+} from "react";
+import {
+  BalanceTransaction,
+  UserBalance,
+  UserBalanceService,
+} from "../services/userBalanceService";
 
 interface BalanceContextType {
   balance: UserBalance;
-  addWinnings: (challengeId: string, challengeName: string, amount: number) => void;
+  addWinnings: (
+    challengeId: string,
+    challengeName: string,
+    amount: number,
+  ) => void;
   cashOutBalance: (amount?: number) => void;
   getRecentTransactions: (limit?: number) => BalanceTransaction[];
   hasBalance: () => boolean;
@@ -20,13 +30,17 @@ const BalanceContext = createContext<BalanceContextType | undefined>(undefined);
 export const useBalance = () => {
   const context = useContext(BalanceContext);
   if (context === undefined) {
-    throw new Error('useBalance must be used within a BalanceProvider');
+    throw new Error("useBalance must be used within a BalanceProvider");
   }
   return context;
 };
 
-export const BalanceProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [balance, setBalance] = useState<UserBalance>(UserBalanceService.getBalance());
+export const BalanceProvider: React.FC<{ children: ReactNode }> = ({
+  children,
+}) => {
+  const [balance, setBalance] = useState<UserBalance>(
+    UserBalanceService.getBalance(),
+  );
 
   // Load balance on mount and set up periodic refresh
   useEffect(() => {
@@ -36,8 +50,16 @@ export const BalanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     return () => clearInterval(interval);
   }, []);
 
-  const addWinnings = (challengeId: string, challengeName: string, amount: number) => {
-    const updatedBalance = UserBalanceService.addWinnings(challengeId, challengeName, amount);
+  const addWinnings = (
+    challengeId: string,
+    challengeName: string,
+    amount: number,
+  ) => {
+    const updatedBalance = UserBalanceService.addWinnings(
+      challengeId,
+      challengeName,
+      amount,
+    );
     setBalance(updatedBalance);
   };
 
@@ -79,9 +101,7 @@ export const BalanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   };
 
   return (
-    <BalanceContext.Provider value={value}>
-      {children}
-    </BalanceContext.Provider>
+    <BalanceContext.Provider value={value}>{children}</BalanceContext.Provider>
   );
 };
 

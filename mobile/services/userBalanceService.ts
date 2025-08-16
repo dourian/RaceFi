@@ -1,8 +1,6 @@
-import { timeManager } from '../../constants/timeManager';
-
 export interface BalanceTransaction {
   id: string;
-  type: 'win' | 'cashout';
+  type: "win" | "cashout";
   amount: number; // USDC amount
   challengeId?: string; // For wins
   challengeName?: string; // For display
@@ -22,7 +20,7 @@ export interface UserBalance {
  * Service for managing user balance and winnings aggregation
  */
 export class UserBalanceService {
-  private static readonly STORAGE_KEY = 'userBalance';
+  private static readonly STORAGE_KEY = "userBalance";
   private static currentBalance: UserBalance = {
     totalBalance: 0,
     totalEarned: 0,
@@ -43,13 +41,13 @@ export class UserBalanceService {
   static addWinnings(
     challengeId: string,
     challengeName: string,
-    amount: number
+    amount: number,
   ): UserBalance {
     const currentBalance = this.getBalance();
-    
+
     const transaction: BalanceTransaction = {
       id: `win_${challengeId}_${Date.now()}`,
-      type: 'win',
+      type: "win",
       amount,
       challengeId,
       challengeName,
@@ -79,16 +77,16 @@ export class UserBalanceService {
     const cashoutAmount = amount || currentBalance.totalBalance;
 
     if (cashoutAmount > currentBalance.totalBalance) {
-      throw new Error('Insufficient balance for cashout');
+      throw new Error("Insufficient balance for cashout");
     }
 
     if (cashoutAmount <= 0) {
-      throw new Error('No balance to cash out');
+      throw new Error("No balance to cash out");
     }
 
     const transaction: BalanceTransaction = {
       id: `cashout_${Date.now()}`,
-      type: 'cashout',
+      type: "cashout",
       amount: cashoutAmount,
       timestamp: new Date(),
       description: `Cashed out ${cashoutAmount} USDC to wallet`,
@@ -123,7 +121,7 @@ export class UserBalanceService {
    */
   static getChallengeTransactions(challengeId: string): BalanceTransaction[] {
     const balance = this.getBalance();
-    return balance.transactions.filter(t => t.challengeId === challengeId);
+    return balance.transactions.filter((t) => t.challengeId === challengeId);
   }
 
   /**
@@ -168,7 +166,7 @@ export class UserBalanceService {
     totalWins: number;
   } {
     const balance = this.getBalance();
-    const wins = balance.transactions.filter(t => t.type === 'win');
+    const wins = balance.transactions.filter((t) => t.type === "win");
 
     return {
       availableBalance: this.formatAmount(balance.totalBalance),

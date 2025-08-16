@@ -3,12 +3,12 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Text, StyleSheet, Pressable, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, spacing, typography, shadows } from "./theme";
-import { useLocation } from "./contexts/locationContext";
+import { useLocation } from "../contexts/locationContext";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { useChallenge } from "./contexts/challengeContext";
-import { RunCalculationService } from "../src/services/runCalculationService";
-import { ChallengeService } from "../src/services/challengeService";
-import { NavigationService } from "../src/services/navigationService";
+import { useChallenge } from "../contexts/challengeContext";
+import { RunCalculationService } from "../services/runCalculationService";
+import { ChallengeService } from "../services/challengeService";
+import { NavigationService } from "../services/navigationService";
 import RecordMap from "../components/recordMap";
 import React from "react";
 

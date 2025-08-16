@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, Text } from 'react-native';
-import { useAuth } from '../lib/auth-context';
-import { SignIn } from './sign-in';
-import { SignUp } from './sign-up';
+import { useAuth } from '../../contexts/authContext';
+import { SignIn } from './SignIn';
+import { SignUp } from './SignUp';
 
 const AuthWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, loading, isGuest } = useAuth();

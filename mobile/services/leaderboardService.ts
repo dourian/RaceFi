@@ -1,4 +1,4 @@
-import { Challenge } from "../../constants/types";
+import { Challenge } from "../constants/types";
 import { UserChallengeStatus } from "./challengeService";
 
 export interface LeaderboardEntry {

@@ -5,7 +5,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { colors, spacing, typography, shadows } from "./theme";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import RecordMap from "../components/recordMap";
-import React from "react";
 
 interface RunData {
   coords: { latitude: number; longitude: number; timestamp: number }[];
@@ -17,7 +16,7 @@ interface RunData {
 export default function RunComplete() {
   const params = useLocalSearchParams();
   const router = useRouter();
-  
+
   // Parse the run data directly using useMemo to avoid re-renders
   const runData = useMemo(() => {
     try {
@@ -31,28 +30,31 @@ export default function RunComplete() {
         };
       }
     } catch (error) {
-      console.error('Error parsing run data:', error);
+      console.error("Error parsing run data:", error);
     }
     return null;
   }, [params.coords, params.duration, params.distance, params.pace]);
 
   const handleSubmit = () => {
     // TODO: Submit run to backend/storage
-    console.log('Submitting run:', runData);
-    
+    console.log("Submitting run:", runData);
+
     // For now, just show an alert and navigate back
-    alert('Run submitted successfully!');
-    router.replace('/recordRun');
+    alert("Run submitted successfully!");
+    router.replace("/recordRun");
   };
 
   const handleReset = () => {
     // Navigate back to record screen
-    router.replace('/recordRun');
+    router.replace("/recordRun");
   };
 
   if (!runData) {
     return (
-      <SafeAreaView style={styles.container} edges={["top", "left", "right", "bottom"]}>
+      <SafeAreaView
+        style={styles.container}
+        edges={["top", "left", "right", "bottom"]}
+      >
         <Text style={styles.loadingText}>Loading run data...</Text>
       </SafeAreaView>
     );
@@ -62,7 +64,7 @@ export default function RunComplete() {
   const formatDuration = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
   // Format distance
@@ -80,9 +82,9 @@ export default function RunComplete() {
 
       {/* Map Section - showing the completed route */}
       <View style={styles.mapContainer}>
-        <RecordMap 
-          coords={runData.coords} 
-          watching={false} 
+        <RecordMap
+          coords={runData.coords}
+          watching={false}
           style={styles.map}
         />
       </View>
@@ -90,10 +92,12 @@ export default function RunComplete() {
       {/* Run Summary Stats */}
       <View style={styles.summaryContainer}>
         <Text style={styles.summaryTitle}>Run Summary</Text>
-        
+
         <View style={styles.statsGrid}>
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>{formatDuration(runData.duration)}</Text>
+            <Text style={styles.statValue}>
+              {formatDuration(runData.duration)}
+            </Text>
             <Text style={styles.statLabel}>Duration</Text>
           </View>
           <View style={styles.statItem}>
@@ -101,7 +105,9 @@ export default function RunComplete() {
             <Text style={styles.statLabel}>Pace/km</Text>
           </View>
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>{formatDistance(runData.distance)}</Text>
+            <Text style={styles.statValue}>
+              {formatDistance(runData.distance)}
+            </Text>
             <Text style={styles.statLabel}>Distance</Text>
           </View>
         </View>
@@ -130,7 +136,9 @@ export default function RunComplete() {
           onPress={handleReset}
         >
           <Ionicons name="refresh" size={24} color={colors.text} />
-          <Text style={[styles.actionButtonText, styles.resetButtonText]}>Start New Run</Text>
+          <Text style={[styles.actionButtonText, styles.resetButtonText]}>
+            Start New Run
+          </Text>
         </Pressable>
       </View>
     </SafeAreaView>
@@ -145,19 +153,19 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.lg,
-    alignItems: 'center',
+    alignItems: "center",
   },
   title: {
     ...typography.title,
     color: colors.text,
     marginBottom: spacing.xs,
-    textAlign: 'center',
+    textAlign: "center",
     marginTop: spacing.lg,
   },
   subtitle: {
     ...typography.body,
     color: colors.textMuted,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: spacing.lg,
   },
   mapContainer: {
@@ -165,7 +173,7 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing.lg,
     marginBottom: spacing.md,
     borderRadius: 12,
-    overflow: 'hidden',
+    overflow: "hidden",
     ...shadows.button,
     shadowOpacity: 0.1,
     elevation: 4,
@@ -186,29 +194,29 @@ const styles = StyleSheet.create({
   },
   summaryTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.text,
     marginBottom: spacing.md,
-    textAlign: 'center',
+    textAlign: "center",
   },
   statsGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
+    flexDirection: "row",
+    justifyContent: "space-around",
   },
   statItem: {
-    alignItems: 'center',
+    alignItems: "center",
     flex: 1,
   },
   statValue: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: colors.accentStrong,
     marginBottom: spacing.xs,
   },
   statLabel: {
     fontSize: 12,
     color: colors.textMuted,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   actionContainer: {
@@ -217,9 +225,9 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: spacing.lg,
     paddingHorizontal: spacing.xl,
     borderRadius: 12,
@@ -238,16 +246,16 @@ const styles = StyleSheet.create({
   },
   actionButtonText: {
     fontSize: 16,
-    fontWeight: '600',
-    color: 'white',
+    fontWeight: "600",
+    color: "white",
   },
   resetButtonText: {
     color: colors.text,
   },
   loadingText: {
     ...typography.body,
-    textAlign: 'center',
-    marginTop: '50%',
+    textAlign: "center",
+    marginTop: "50%",
     color: colors.textMuted,
   },
 });

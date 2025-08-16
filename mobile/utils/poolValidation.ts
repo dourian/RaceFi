@@ -3,7 +3,7 @@
  * Validates that prize pools are correctly calculated based on stakes and participants
  */
 
-import { Challenge } from '../constants/types';
+import { Challenge } from "../constants/types";
 
 export interface PoolValidationResult {
   challengeId: string;
@@ -34,33 +34,41 @@ export interface PoolAnalysis {
  * Validate prize pool calculations for a single challenge
  * Expected formula: prizePool = stake × participants
  */
-export function validateChallengePool(challenge: Challenge): PoolValidationResult {
+export function validateChallengePool(
+  challenge: Challenge,
+): PoolValidationResult {
   const expectedPrizePool = challenge.stake * challenge.participants;
   const discrepancy = challenge.prizePool - expectedPrizePool;
   const isValid = discrepancy === 0;
-  
+
   const validationNotes: string[] = [];
-  
+
   if (!isValid) {
     if (discrepancy > 0) {
-      validationNotes.push(`Prize pool is ${discrepancy} USDC higher than expected`);
+      validationNotes.push(
+        `Prize pool is ${discrepancy} USDC higher than expected`,
+      );
     } else {
-      validationNotes.push(`Prize pool is ${Math.abs(discrepancy)} USDC lower than expected`);
+      validationNotes.push(
+        `Prize pool is ${Math.abs(discrepancy)} USDC lower than expected`,
+      );
     }
   }
-  
+
   // Check if participants exceed max participants
   if (challenge.participants > challenge.maxParticipants) {
-    validationNotes.push(`Participants (${challenge.participants}) exceed max participants (${challenge.maxParticipants})`);
+    validationNotes.push(
+      `Participants (${challenge.participants}) exceed max participants (${challenge.maxParticipants})`,
+    );
   }
-  
+
   // Check for edge cases
   if (challenge.participants === 0) {
-    validationNotes.push('No participants joined yet');
+    validationNotes.push("No participants joined yet");
   }
-  
+
   if (challenge.stake <= 0) {
-    validationNotes.push('Invalid stake amount (must be positive)');
+    validationNotes.push("Invalid stake amount (must be positive)");
   }
 
   return {
@@ -73,7 +81,7 @@ export function validateChallengePool(challenge: Challenge): PoolValidationResul
     expectedPrizePool,
     isValid,
     discrepancy,
-    validationNotes
+    validationNotes,
   };
 }
 
@@ -82,16 +90,24 @@ export function validateChallengePool(challenge: Challenge): PoolValidationResul
  */
 export function analyzeAllPools(challenges: Challenge[]): PoolAnalysis {
   const results = challenges.map(validateChallengePool);
-  
-  const validChallenges = results.filter(r => r.isValid).length;
+
+  const validChallenges = results.filter((r) => r.isValid).length;
   const invalidChallenges = results.length - validChallenges;
-  
-  const totalStakeAmount = challenges.reduce((sum, c) => sum + (c.stake * c.participants), 0);
-  const totalPrizePoolAmount = challenges.reduce((sum, c) => sum + c.prizePool, 0);
-  
-  const averageStake = challenges.reduce((sum, c) => sum + c.stake, 0) / challenges.length;
-  const averageParticipants = challenges.reduce((sum, c) => sum + c.participants, 0) / challenges.length;
-  
+
+  const totalStakeAmount = challenges.reduce(
+    (sum, c) => sum + c.stake * c.participants,
+    0,
+  );
+  const totalPrizePoolAmount = challenges.reduce(
+    (sum, c) => sum + c.prizePool,
+    0,
+  );
+
+  const averageStake =
+    challenges.reduce((sum, c) => sum + c.stake, 0) / challenges.length;
+  const averageParticipants =
+    challenges.reduce((sum, c) => sum + c.participants, 0) / challenges.length;
+
   const summary: string[] = [
     `Analyzed ${challenges.length} challenges`,
     `${validChallenges} challenges have correct prize pool calculations`,
@@ -100,9 +116,9 @@ export function analyzeAllPools(challenges: Challenge[]): PoolAnalysis {
     `Total prize pool amount: ${totalPrizePoolAmount} USDC`,
     `Discrepancy: ${totalPrizePoolAmount - totalStakeAmount} USDC`,
     `Average stake per challenge: ${averageStake.toFixed(2)} USDC`,
-    `Average participants per challenge: ${averageParticipants.toFixed(1)}`
+    `Average participants per challenge: ${averageParticipants.toFixed(1)}`,
   ];
-  
+
   return {
     totalChallenges: challenges.length,
     validChallenges,
@@ -112,14 +128,17 @@ export function analyzeAllPools(challenges: Challenge[]): PoolAnalysis {
     averageStake,
     averageParticipants,
     results,
-    summary
+    summary,
   };
 }
 
 /**
  * Calculate expected prize pool based on stake and participants
  */
-export function calculateExpectedPrizePool(stake: number, participants: number): number {
+export function calculateExpectedPrizePool(
+  stake: number,
+  participants: number,
+): number {
   return stake * participants;
 }
 
@@ -127,39 +146,39 @@ export function calculateExpectedPrizePool(stake: number, participants: number):
  * Format validation results for console output
  */
 export function formatValidationReport(analysis: PoolAnalysis): string {
-  let report = '\n=== USDC PRIZE POOL VALIDATION REPORT ===\n\n';
-  
+  let report = "\n=== USDC PRIZE POOL VALIDATION REPORT ===\n\n";
+
   // Summary
-  report += 'SUMMARY:\n';
-  analysis.summary.forEach(line => {
+  report += "SUMMARY:\n";
+  analysis.summary.forEach((line) => {
     report += `  ${line}\n`;
   });
-  
+
   // Invalid challenges details
-  const invalidChallenges = analysis.results.filter(r => !r.isValid);
+  const invalidChallenges = analysis.results.filter((r) => !r.isValid);
   if (invalidChallenges.length > 0) {
-    report += '\nINCORRECT CALCULATIONS:\n';
-    invalidChallenges.forEach(result => {
+    report += "\nINCORRECT CALCULATIONS:\n";
+    invalidChallenges.forEach((result) => {
       report += `\n  ${result.challengeName} (${result.challengeId}):\n`;
       report += `    Stake: ${result.stake} USDC × ${result.participants} participants\n`;
       report += `    Expected: ${result.expectedPrizePool} USDC\n`;
       report += `    Actual: ${result.currentPrizePool} USDC\n`;
-      report += `    Discrepancy: ${result.discrepancy > 0 ? '+' : ''}${result.discrepancy} USDC\n`;
-      result.validationNotes.forEach(note => {
+      report += `    Discrepancy: ${result.discrepancy > 0 ? "+" : ""}${result.discrepancy} USDC\n`;
+      result.validationNotes.forEach((note) => {
         report += `    ⚠️  ${note}\n`;
       });
     });
   }
-  
+
   // Valid challenges (brief)
-  const validChallenges = analysis.results.filter(r => r.isValid);
+  const validChallenges = analysis.results.filter((r) => r.isValid);
   if (validChallenges.length > 0) {
-    report += '\nCORRECT CALCULATIONS:\n';
-    validChallenges.forEach(result => {
+    report += "\nCORRECT CALCULATIONS:\n";
+    validChallenges.forEach((result) => {
       report += `  ✅ ${result.challengeName}: ${result.stake} × ${result.participants} = ${result.currentPrizePool} USDC\n`;
     });
   }
-  
-  report += '\n=== END REPORT ===\n';
+
+  report += "\n=== END REPORT ===\n";
   return report;
 }

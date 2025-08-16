@@ -1,4 +1,4 @@
-import { Router } from 'expo-router';
+import { Router } from "expo-router";
 
 export interface NavigationRoutes {
   CHALLENGE_DETAIL: string;
@@ -26,8 +26,8 @@ export class NavigationService {
    */
   static navigateToRecordChallenge(router: Router, challengeId: string): void {
     router.push({
-      pathname: '/recordRun',
-      params: { id: challengeId }
+      pathname: "/recordRun",
+      params: { id: challengeId },
     });
   }
 
@@ -36,7 +36,7 @@ export class NavigationService {
    * @param router Expo router instance
    */
   static navigateToRecord(router: Router): void {
-    router.push('/recordRun');
+    router.push("/recordRun");
   }
 
   /**
@@ -52,7 +52,7 @@ export class NavigationService {
    * @param router Expo router instance
    */
   static navigateToHome(router: Router): void {
-    router.push('/');
+    router.push("/");
   }
 
   /**
@@ -69,10 +69,13 @@ export class NavigationService {
    * @param challengeId The challenge ID
    * @returns Route object with pathname and params
    */
-  static getChallengeRecordRoute(challengeId: string): { pathname: string; params: { id: string } } {
+  static getChallengeRecordRoute(challengeId: string): {
+    pathname: string;
+    params: { id: string };
+  } {
     return {
-      pathname: '/recordRun ',
-      params: { id: challengeId }
+      pathname: "/recordRun ",
+      params: { id: challengeId },
     };
   }
 
@@ -107,17 +110,17 @@ export class NavigationService {
     duration: number,
     distance: number,
     pace: string,
-    isChallenge: boolean = false
+    isChallenge: boolean = false,
   ): void {
     // Navigate to completion page - we'll handle back button via headerBackVisible: false
     router.push({
-      pathname: '/completion',
+      pathname: "/completion",
       params: {
         duration: duration.toString(),
         distance: distance.toString(),
         pace: pace,
-        isChallenge: isChallenge.toString()
-      }
+        isChallenge: isChallenge.toString(),
+      },
     });
   }
 
@@ -127,7 +130,7 @@ export class NavigationService {
    */
   static navigateToHomeAndReset(router: Router): void {
     router.dismissAll();
-    router.replace('/(tabs)');
+    router.replace("/(tabs)");
   }
 
   /**
@@ -139,11 +142,11 @@ export class NavigationService {
    * @param pace Run pace string
    */
   static handleChallengeCompletion(
-    router: Router, 
+    router: Router,
     challengeId: string,
     duration: number,
     distance: number,
-    pace: string
+    pace: string,
   ): void {
     this.navigateToCompletion(router, duration, distance, pace, true);
   }
@@ -159,7 +162,7 @@ export class NavigationService {
     router: Router,
     duration: number,
     distance: number,
-    pace: string
+    pace: string,
   ): void {
     this.navigateToCompletion(router, duration, distance, pace, false);
   }

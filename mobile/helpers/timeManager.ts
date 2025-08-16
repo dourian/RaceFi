@@ -1,7 +1,7 @@
 // Central time management for the app
 // This allows us to simulate time progression for testing and demo purposes
 
-import React from 'react';
+import React from "react";
 
 class TimeManager {
   private static instance: TimeManager;
@@ -61,7 +61,7 @@ class TimeManager {
   }
 
   private notifyListeners(): void {
-    this.listeners.forEach(listener => listener());
+    this.listeners.forEach((listener) => listener());
   }
 
   // Utility methods for common time calculations
@@ -93,13 +93,13 @@ export const getCurrentAppTime = () => timeManager.getCurrentTime();
 
 // Hook for React components to re-render when time changes
 export const useAppTime = () => {
-  const [, forceUpdate] = React.useReducer(x => x + 1, 0);
-  
+  const [, forceUpdate] = React.useReducer((x) => x + 1, 0);
+
   React.useEffect(() => {
     timeManager.addListener(forceUpdate);
     return () => timeManager.removeListener(forceUpdate);
   }, []);
-  
+
   return timeManager.getCurrentTime();
 };
 
