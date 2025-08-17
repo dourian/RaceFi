@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -64,6 +64,16 @@ export default function CreateChallengeScreen() {
       loadSavedRoute();
     }, [])
   );
+
+  // Clear route data when component unmounts (leaving the screen)
+  useEffect(() => {
+    return () => {
+      // Cleanup function runs when component unmounts
+      RouteStorage.clearTemporaryRoute().catch(error => {
+        console.error('Error clearing route on unmount:', error);
+      });
+    };
+  }, []);
   const [loading, setLoading] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [datePickerMode, setDatePickerMode] = useState<"start" | "end">(
@@ -142,6 +152,10 @@ export default function CreateChallengeScreen() {
             setRouteDistance(0);
             updateField('distance_km', '');
             updateField('polyline', '');
+            // Clear from storage as well
+            RouteStorage.clearTemporaryRoute().catch(error => {
+              console.error('Error clearing route:', error);
+            });
           },
         },
       ]
@@ -267,6 +281,12 @@ export default function CreateChallengeScreen() {
       };
 
       await ApiService.createChallenge(challengeData);
+      
+      // Clear route data after successful challenge creation
+      await RouteStorage.clearTemporaryRoute();
+      setRoutePoints([]);
+      setRouteDistance(0);
+      
       Alert.alert("Success", "Challenge created successfully!", [
         { text: "OK", onPress: () => router.back() },
       ]);
