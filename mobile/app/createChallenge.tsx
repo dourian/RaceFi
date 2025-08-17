@@ -457,19 +457,19 @@ export default function CreateChallengeScreen() {
                   />
                 </View>
 
-                <View style={[styles.fieldGroup, styles.halfWidth]}>
-                  <Text style={styles.label}>Max Participants *</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={formData.max_participants}
-                    onChangeText={(value) => updateField("max_participants", value)}
-                    placeholder="20"
-                    placeholderTextColor={colors.textMuted}
-                    keyboardType="number-pad"
-                  />
-                </View>
               </View>
 
+              <View style={styles.fieldGroup}>
+                <Text style={styles.label}>Max Participants *</Text>
+                <TextInput
+                  style={styles.input}
+                  value={formData.max_participants}
+                  onChangeText={(value) => updateField("max_participants", value)}
+                  placeholder="20"
+                  placeholderTextColor={colors.textMuted}
+                  keyboardType="number-pad"
+                />
+              </View>
 
               <View style={styles.fieldGroup}>
                 <Text style={styles.label}>Location *</Text>

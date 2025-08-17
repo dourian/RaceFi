@@ -64,30 +64,54 @@ export const RouteStorage = {
     }
   },
 
-  // Encode route points to polyline string (simplified version)
+  // Encode route points to polyline string using Google's polyline format
   encodePolyline(points: RoutePoint[]): string {
-    // This is a simplified encoding - in production, use a proper polyline encoding library
-    return points
-      .map(point => `${point.latitude.toFixed(6)},${point.longitude.toFixed(6)}`)
-      .join(';');
+    if (points.length === 0) return '';
+    
+    // Convert RoutePoint[] to coordinate pairs for Google polyline encoding
+    const coordinates = points.map(point => [point.latitude, point.longitude]);
+    
+    // Use Google's polyline encoding (you'll need to install @mapbox/polyline)
+    try {
+      const polyline = require('@mapbox/polyline');
+      return polyline.encode(coordinates);
+    } catch (error) {
+      console.error('Error encoding polyline:', error);
+      // Fallback to simple format if polyline library not available
+      return points
+        .map(point => `${point.latitude.toFixed(6)},${point.longitude.toFixed(6)}`)
+        .join(';');
+    }
   },
 
-  // Decode polyline string to route points (simplified version)
+  // Decode polyline string to route points using Google's polyline format
   decodePolyline(polyline: string): RoutePoint[] {
     if (!polyline) return [];
     
     try {
-      return polyline.split(';').map((coord, index) => {
-        const [lat, lng] = coord.split(',').map(Number);
-        return {
-          latitude: lat,
-          longitude: lng,
-          id: `point_${index}_${Date.now()}`,
-        };
-      });
+      // First try Google polyline decoding
+      const polylineLib = require('@mapbox/polyline');
+      const coordinates = polylineLib.decode(polyline);
+      return coordinates.map(([lat, lng], index) => ({
+        latitude: lat,
+        longitude: lng,
+        id: `point_${index}_${Date.now()}`,
+      }));
     } catch (error) {
-      console.error('Error decoding polyline:', error);
-      return [];
+      // Fallback to simple format if it's not a Google polyline
+      try {
+        return polyline.split(';').map((coord, index) => {
+          const [lat, lng] = coord.split(',').map(Number);
+          return {
+            latitude: lat,
+            longitude: lng,
+            id: `point_${index}_${Date.now()}`,
+          };
+        });
+      } catch (fallbackError) {
+        console.error('Error decoding polyline:', error, fallbackError);
+        return [];
+      }
     }
   },
 
