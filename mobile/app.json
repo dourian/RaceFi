@@ -53,9 +53,7 @@
       "router": {},
       "eas": {
         "projectId": "4fe0683b-afd8-4aae-85e3-af84b0649d46"
-      },
-      "EXPO_PUBLIC_SUPABASE_URL": "https://nzoefcwvuinietbyfqew.supabase.co",
-      "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im56b2VmY3d2dWluaWV0YnlmcWV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUzMTM4MTAsImV4cCI6MjA3MDg4OTgxMH0.2ldZF7iH0T2Y8NOV2c5Gxs3vA4UkizjQj_oJQbNA-NQ"
+      }
     },
     "owner": "mastersuperd"
   }
