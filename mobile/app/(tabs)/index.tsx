@@ -1,4 +1,4 @@
-import { Link, router, useFocusEffect } from "expo-router";
+import { Link, router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   Text,
@@ -25,6 +25,7 @@ export default function BrowseScreen() {
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const currentAppTime = useAppTime(); // Use centralized app time that updates when time changes
 
   // Load challenges function
@@ -42,12 +43,20 @@ export default function BrowseScreen() {
     }
   }, []);
 
-  // Load challenges when screen comes into focus (including initial mount)
-  useFocusEffect(
-    useCallback(() => {
-      loadChallenges();
-    }, [loadChallenges]),
-  );
+  // Pull-to-refresh handler
+  const handleRefresh = useCallback(async () => {
+    try {
+      setRefreshing(true);
+      await loadChallenges();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [loadChallenges]);
+
+  // Load challenges once on mount to preserve scroll position on back
+  useEffect(() => {
+    loadChallenges();
+  }, [loadChallenges]);
 
   // Filter challenges based on current filter
   const filteredChallenges = useMemo(() => {
@@ -283,6 +292,8 @@ export default function BrowseScreen() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           style={styles.list}
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
           renderItem={({ item }) => {
             const challengeStatus = getChallengeStatus(item.id);
 
