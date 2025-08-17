@@ -10,9 +10,11 @@
     "web": "expo start --web"
   },
   "dependencies": {
+    "@coinbase/onchainkit": "^0.38.19",
     "@mapbox/polyline": "^1.2.1",
     "@react-native-async-storage/async-storage": "2.1.2",
     "@react-native-community/datetimepicker": "^8.4.4",
+    "@react-navigation/native": "^7.1.6",
     "@supabase/supabase-js": "^2.55.0",
     "expo": "~53.0.20",
     "expo-image-picker": "^16.1.4",
@@ -20,18 +22,18 @@
     "expo-location": "~18.1.6",
     "expo-router": "~5.1.4",
     "expo-status-bar": "~2.2.3",
+    "expo-web-browser": "^14.2.0",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "react-native": "0.79.5",
-    "react-native-maps": "1.20.1",
-    "react-native-svg": "^15.12.1",
-    "react-native-url-polyfill": "^2.0.0",
-    "react-native-web": "~0.20.0",
-    "@react-navigation/native": "^7.1.6",
     "react-native-gesture-handler": "~2.24.0",
+    "react-native-maps": "1.20.1",
     "react-native-reanimated": "~3.17.4",
     "react-native-safe-area-context": "^5.4.0",
-    "react-native-screens": "~4.11.1"
+    "react-native-screens": "~4.11.1",
+    "react-native-svg": "^15.12.1",
+    "react-native-url-polyfill": "^2.0.0",
+    "react-native-web": "~0.20.0"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

@@ -17,6 +17,18 @@ class Settings:
     API_V1_STR: str = "/api/v1"
     PROJECT_NAME: str = "RaceFi API"
 
+    # Coinbase Onramp / CDP config
+    KEY_NAME: str | None = os.getenv("KEY_NAME")
+    KEY_SECRET: str | None = os.getenv("KEY_SECRET")
+    CDP_API_KEY: str | None = os.getenv("CDP_API_KEY")  # legacy
+    CDP_PROJECT_ID: str | None = os.getenv("CDP_PROJECT_ID")  # legacy
+    FORCE_LEGACY: bool = os.getenv("FORCE_LEGACY", "false").lower() in {"1", "true", "yes"}
+
+    ONRAMP_API_BASE: str = os.getenv(
+        "ONRAMP_API_BASE", "https://api.developer.coinbase.com/onramp/v1"
+    )
+    ONRAMP_REDIRECT_URL: str = os.getenv("ONRAMP_REDIRECT_URL", "racefi://success")
+
     # Validation
     def validate(self):
         # For development, allow placeholder values

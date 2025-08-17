@@ -29,9 +29,10 @@ export default function BrowseScreen() {
   const currentAppTime = useAppTime(); // Use centralized app time that updates when time changes
 
   // Load challenges function
-  const loadChallenges = useCallback(async () => {
+  const loadChallenges = useCallback(async (opts?: { silent?: boolean }) => {
+    const silent = opts?.silent === true;
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       setError(null);
       const challengesData = await ApiService.getChallenges();
       setChallenges(challengesData);
@@ -39,7 +40,7 @@ export default function BrowseScreen() {
       console.error("Error loading challenges:", err);
       setError("Failed to load challenges");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
@@ -47,7 +48,7 @@ export default function BrowseScreen() {
   const handleRefresh = useCallback(async () => {
     try {
       setRefreshing(true);
-      await loadChallenges();
+      await loadChallenges({ silent: true });
     } finally {
       setRefreshing(false);
     }
@@ -264,19 +265,6 @@ export default function BrowseScreen() {
           <Pressable
             style={styles.retryButton}
             onPress={() => {
-              const loadChallenges = async () => {
-                try {
-                  setLoading(true);
-                  setError(null);
-                  const challengesData = await ApiService.getChallenges();
-                  setChallenges(challengesData);
-                } catch (err) {
-                  console.error("Error loading challenges:", err);
-                  setError("Failed to load challenges");
-                } finally {
-                  setLoading(false);
-                }
-              };
               loadChallenges();
             }}
           >
