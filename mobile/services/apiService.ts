@@ -463,6 +463,41 @@ export class ApiService {
     return (profile as any) ?? null;
   }
 
+  /**
+   * List challenge attendee rows for the current user
+   * Returns an array of { challenge_id, status } for hydration
+   */
+  static async listCurrentUserAttendees(): Promise<Array<{ challenge_id: number; status: string }>> {
+    const profile = await ApiService.getCurrentUserProfile();
+    if (!profile?.id) return [];
+
+    const { data, error } = await supabase
+      .from("challenge_attendees")
+      .select("challenge_id,status")
+      .eq("profile_id", profile.id as any);
+    if (error) throw error;
+    const rows = (data || []) as any[];
+    return rows
+      .filter((r) => r?.challenge_id != null)
+      .map((r) => ({ challenge_id: Number(r.challenge_id), status: String(r.status || "joined") }));
+  }
+
+  /**
+   * Returns true if current user has already joined the given challenge id
+   */
+  static async hasCurrentUserJoined(challengeId: number): Promise<boolean> {
+    const profile = await ApiService.getCurrentUserProfile();
+    if (!profile?.id) return false;
+    const { data, error } = await supabase
+      .from("challenge_attendees")
+      .select("id")
+      .eq("challenge_id", challengeId)
+      .eq("profile_id", profile.id as any)
+      .maybeSingle();
+    if (error) throw error;
+    return !!data;
+  }
+
   static async joinChallengeAsCurrentUser(
     challengeId: number,
     stakeAmount: number,
