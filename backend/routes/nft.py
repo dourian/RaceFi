@@ -236,7 +236,7 @@ def upload_file_to_pinata(file_bytes, filename="file.glb"):
     ipfs_hash = response.json()["IpfsHash"]
     return f"ipfs://{ipfs_hash}"
 
-def upload_metadata_to_pinata(name, description, file_uri, image_uri="https://coffee-top-walrus-619.mypinata.cloud/ipfs/bafybeibnf73slsl6fjskpk4bwwchu73ikr4qgkvqmckszo2ktenyhwkblm"):
+def upload_metadata_to_pinata(name, description, file_uri, challenge_id="", image_uri="https://coffee-top-walrus-619.mypinata.cloud/ipfs/bafybeibnf73slsl6fjskpk4bwwchu73ikr4qgkvqmckszo2ktenyhwkblm"):
     """
     Upload JSON metadata to Pinata and return its ipfs:// URI
     
@@ -271,6 +271,15 @@ def upload_metadata_to_pinata(name, description, file_uri, image_uri="https://co
             }
         ]
     }
+    
+    # Add challenge_id to metadata if provided
+    if challenge_id:
+        metadata["challenge_id"] = challenge_id
+        # Also add as an attribute for better visibility in marketplaces
+        metadata["attributes"].append({
+            "trait_type": "Challenge ID",
+            "value": challenge_id
+        })
 
     response = requests.post(f"{PINATA_BASE_URL}/pinJSONToIPFS", headers=headers, json=metadata)
     if response.status_code != 200:
@@ -288,6 +297,7 @@ class MintFloatingLineRequest(BaseModel):
     recipient: str
     name: str = "Floating Line NFT"
     description: str = "A 3D floating line NFT"
+    challenge_id: str = ""
 
 # --- Endpoints ---
 @router.post("/deploy-contract")
@@ -318,7 +328,7 @@ def mint_floating_line(req: MintFloatingLineRequest):
 
         # 2️⃣ Upload GLB & metadata to Pinata
         file_uri = upload_file_to_pinata(glb_bytes, filename="floating_line.glb")
-        token_uri = upload_metadata_to_pinata(req.name, req.description, file_uri)
+        token_uri = upload_metadata_to_pinata(req.name, req.description, file_uri, req.challenge_id)
 
         # 3️⃣ Deploy contract if needed or validate existing contract
         contract_address = req.contract_address
@@ -480,6 +490,7 @@ def mint_floating_line(req: MintFloatingLineRequest):
             "tx_hash": tx_hash,
             "block_number": receipt.blockNumber,
             "token_uri": token_uri,
+            "challenge_id": req.challenge_id if req.challenge_id else None,
             "view_on_explorer": f"https://sepolia.etherscan.io/token/{contract_address}?a={req.recipient}"
         }
 

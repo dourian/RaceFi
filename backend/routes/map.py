@@ -12,6 +12,9 @@ load_dotenv()
 
 client = Client()
 
+class LinkRequest(BaseModel):
+    link: str
+
 class CompareRequest(BaseModel):
     activity_id1: int = None
     activity_id2: int = None
@@ -129,6 +132,33 @@ async def get_map_strava(activity_id: int):
         return polyline_str
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Strava API error: {e}")
+
+@router.post("/by-link")
+async def get_map_strava_by_link(request: LinkRequest):
+    """Get a polyline from Strava by link"""
+    if not client.access_token:
+        raise HTTPException(status_code=401, detail="Not authorized. Please complete OAuth flow first.")
+    
+    try:
+        link = request.link
+        
+        if "strava.com/activities/" in link:
+            activity_id = link.split("/activities/")[-1].split("/")[0]
+        else:
+            raise HTTPException(status_code=400, detail="Could not extract valid activity ID from link")
+        
+        try:
+            activity_id = int(activity_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Could not extract valid activity ID from link")
+        
+        polyline_str = await get_map_strava(activity_id)
+        return polyline_str
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Strava API error: {str(e)}")
 
 @router.post("/compare", response_model=bool)
 async def compare_map(request: CompareRequest):
