@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Keyboard, TouchableWithoutFeedback } from 'react-native';
 import { useAuth } from '../../contexts/authContext';
 
 const SignUp: React.FC = () => {
@@ -41,6 +41,7 @@ const SignUp: React.FC = () => {
   };
 
   return (
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
     <View style={styles.container}>
       <Text style={styles.title}>Join RaceFi</Text>
       <Text style={styles.subtitle}>Create your account</Text>
@@ -48,6 +49,7 @@ const SignUp: React.FC = () => {
       <TextInput
         style={styles.input}
         placeholder="Email"
+        placeholderTextColor="#6B7280"
         value={email}
         onChangeText={setEmail}
         keyboardType="email-address"
@@ -58,6 +60,7 @@ const SignUp: React.FC = () => {
       <TextInput
         style={styles.input}
         placeholder="Password"
+        placeholderTextColor="#6B7280"
         value={password}
         onChangeText={setPassword}
         secureTextEntry
@@ -67,6 +70,7 @@ const SignUp: React.FC = () => {
       <TextInput
         style={styles.input}
         placeholder="Confirm Password"
+        placeholderTextColor="#6B7280"
         value={confirmPassword}
         onChangeText={setConfirmPassword}
         secureTextEntry
@@ -83,6 +87,7 @@ const SignUp: React.FC = () => {
         </Text>
       </TouchableOpacity>
     </View>
+    </TouchableWithoutFeedback>
   );
 };
 
