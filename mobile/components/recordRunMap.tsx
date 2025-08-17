@@ -1,6 +1,5 @@
-import { buildArrowMarkers, decodePolyline } from "../helpers/polyline";
+import { buildArrowMarkers } from "../helpers/polyline";
 import Map from "./map";
-import polyline from "@mapbox/polyline";
 
 export default function RecordRunMap({
   coords,

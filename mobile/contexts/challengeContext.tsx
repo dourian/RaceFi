@@ -19,7 +19,6 @@ interface ChallengeContextType {
   getChallengeStatus: (challengeId: string) => UserChallengeStatus;
   resetChallenge: (challengeId: string) => void;
   resetAllChallenges: () => void;
-  simulateCompletedChallengesWithResults: () => void;
   getUserStats: () => Promise<{
     totalWins: number;
     totalEarnings: number;
@@ -43,7 +42,7 @@ export const useChallenge = () => {
 export const ChallengeProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
-  const { user, isGuest } = useAuth();
+  const { user } = useAuth();
   const [userChallengeStatuses, setUserChallengeStatuses] = useState<
     UserChallengeStatus[]
   >([]);
@@ -130,88 +129,6 @@ export const ChallengeProvider: React.FC<{ children: ReactNode }> = ({
     timeManager.resetToRealTime();
   };
 
-  const simulateCompletedChallengesWithResults = async () => {
-    // Get challenge data from API to get prize pools
-    const challenges = await ApiService.getChallenges();
-
-    // Advance time to expire some challenges while keeping others active
-    // Looking at challenge dates: some end at 5-8 days, others at 12-19 days
-    const daysToAdvance = 8 + Math.floor(Math.random() * 4); // 8-11 days
-    timeManager.advanceTimeByDays(daysToAdvance);
-
-    const simulatedStatuses: UserChallengeStatus[] = [];
-
-    challenges.forEach((challenge: any, index: number) => {
-      let shouldSimulate = true;
-      let simulationType: "joined" | "completed" | "winner" = "joined";
-
-      switch (index) {
-        case 0: // First challenge - completed and won (if expired)
-          simulationType = "winner";
-          break;
-        case 1: // Second challenge - completed and won (if expired)
-          simulationType = "winner";
-          break;
-        case 2: // Third challenge - completed but didn't win
-          simulationType = "completed";
-          break;
-        case 3: // Fourth challenge - just joined
-          simulationType = "joined";
-          break;
-        case 4: // Fifth challenge - completed but waiting for results
-          simulationType = "completed";
-          break;
-        case 5: // Sixth challenge - just joined
-          simulationType = "joined";
-          break;
-        default:
-          // For remaining challenges, don't simulate (not joined)
-          shouldSimulate = false;
-          break;
-      }
-
-      if (shouldSimulate) {
-        if (simulationType === "joined") {
-          // Just joined, no run data yet
-          const joinedStatus = ChallengeService.joinChallenge(challenge.id);
-          simulatedStatuses.push(joinedStatus);
-        } else {
-          // Has completed a run
-          const isWinningRun = simulationType === "winner";
-          const mockRunData = ChallengeService.createMockRunData(
-            challenge.id,
-            isWinningRun,
-          );
-
-          const joinedStatus = ChallengeService.joinChallenge(challenge.id);
-          const completedStatus = ChallengeService.completeChallengeRun(
-            joinedStatus,
-            mockRunData,
-          );
-
-          if (simulationType === "winner") {
-            try {
-              // Try to determine winner - will only work if challenge is expired
-              const winnerStatus = ChallengeService.simulateWinner(
-                completedStatus,
-                challenge.prizePool,
-                challenge,
-              );
-              simulatedStatuses.push(winnerStatus);
-            } catch (error) {
-              // Challenge not expired yet, keep as completed
-              simulatedStatuses.push(completedStatus);
-            }
-          } else {
-            // Just completed, no winner determination yet
-            simulatedStatuses.push(completedStatus);
-          }
-        }
-      }
-    });
-
-    setUserChallengeStatuses(simulatedStatuses);
-  };
 
   const getUserStats = async () => {
     const challenges = await ApiService.getChallenges();
@@ -261,7 +178,6 @@ export const ChallengeProvider: React.FC<{ children: ReactNode }> = ({
     getChallengeStatus,
     resetChallenge,
     resetAllChallenges,
-    simulateCompletedChallengesWithResults,
     getUserStats,
   };
 

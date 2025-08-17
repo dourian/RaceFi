@@ -6,7 +6,6 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  isGuest: boolean;
   signIn: (
     email: string,
     password: string,
@@ -16,7 +15,6 @@ interface AuthContextType {
     password: string,
   ) => Promise<{ data: any; error: any }>;
   signOut: () => Promise<{ error: any }>;
-  continueAsGuest: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -33,7 +31,6 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isGuest, setIsGuest] = useState(false);
 
   useEffect(() => {
     // Get initial session
@@ -73,22 +70,21 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 
   const signOut = async () => {
     const { error } = await supabase.auth.signOut();
+    // Ensure local state is cleared so UI immediately reflects logged-out state
+    if (!error) {
+      setSession(null);
+      setUser(null);
+    }
     return { error };
-  };
-
-  const continueAsGuest = () => {
-    setIsGuest(true);
   };
 
   const value = {
     user,
     session,
     loading,
-    isGuest,
     signIn,
     signUp,
     signOut,
-    continueAsGuest,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

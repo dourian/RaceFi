@@ -5,7 +5,7 @@ import { SignIn } from './SignIn';
 import { SignUp } from './SignUp';
 
 const AuthWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, loading, isGuest } = useAuth();
+  const { user, loading } = useAuth();
   const [showSignUp, setShowSignUp] = useState(false);
 
   if (loading) {
@@ -16,7 +16,7 @@ const AuthWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     );
   }
 
-  if (!user && !isGuest) {
+  if (!user) {
     return (
       <View style={styles.authContainer}>
         {showSignUp ? (

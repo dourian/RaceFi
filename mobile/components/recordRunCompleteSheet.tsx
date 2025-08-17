@@ -12,7 +12,6 @@ import { colors, spacing, typography, shadows } from "../app/theme";
 import { API_URL } from "../app/config";
 import { decodePolyline, haversineMeters } from "../helpers/polyline";
 import polyline from "@mapbox/polyline";
-import mockChallenges from "../mock/mockChallenges";
 import { ApiService } from "../services/apiService";
 import { ChallengeService } from "../services/challengeService";
 import { RunCalculationService } from "../services/runCalculationService";
@@ -110,10 +109,7 @@ export default function RecordRunCompleteSheet({
             const found = all.find((c) => c.id === challengeId);
             challengePolyline = found?.polyline;
           } catch {}
-          if (!challengePolyline) {
-            const foundMock = mockChallenges.find((c) => c.id === challengeId);
-            challengePolyline = foundMock?.polyline;
-          }
+          // If no challenge polyline is found from API, verification will fail gracefully.
         }
 
         const challengeCoords = decodePolyline(challengePolyline);

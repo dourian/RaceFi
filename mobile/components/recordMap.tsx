@@ -10,7 +10,6 @@ interface RecordMapProps {
 }
 
 export default function RecordMap({ coords, watching, style }: RecordMapProps) {
-  const [isGuest, setIsGuest] = useState(false);
   const [followUser, setFollowUser] = useState(false);
   const followTimeoutRef = useRef<number | null>(null);
   const [manualInteraction, setManualInteraction] = useState(false);
@@ -200,15 +199,10 @@ export default function RecordMap({ coords, watching, style }: RecordMapProps) {
     }
   };
 
-  if (!isGuest && locationPermission !== "granted") {
+  if (locationPermission !== "granted") {
     return (
       <View style={[styles.container, style]}>
-        <TouchableOpacity
-          style={styles.guestButton}
-          onPress={() => setIsGuest(true)}
-        >
-          <Text style={styles.buttonText}>Continue as Guest</Text>
-        </TouchableOpacity>
+        <Text style={styles.loadingText}>Location permission is required to use the map.</Text>
       </View>
     );
   }
@@ -217,7 +211,7 @@ export default function RecordMap({ coords, watching, style }: RecordMapProps) {
   const initialLocation =
     currentLocation || location || (coords.length > 0 ? coords[0] : null);
 
-  if (!initialLocation && !isGuest) {
+  if (!initialLocation) {
     return (
       <View style={[styles.container, style]}>
         <Text style={styles.loadingText}>Loading map...</Text>
@@ -236,7 +230,7 @@ export default function RecordMap({ coords, watching, style }: RecordMapProps) {
           latitudeDelta: 0.005,
           longitudeDelta: 0.005,
         }}
-        showsUserLocation={!isGuest && watching}
+        showsUserLocation={watching}
         showsMyLocationButton={false} // We'll use our custom button
         rotateEnabled={false}
         zoomEnabled={true}
@@ -262,7 +256,7 @@ export default function RecordMap({ coords, watching, style }: RecordMapProps) {
       </MapView>
 
       {/* Control buttons */}
-      {!isGuest && locationPermission === "granted" && (
+      {locationPermission === "granted" && (
         <View style={styles.controlsContainer}>
           {/* Zoom buttons */}
           <View style={styles.zoomButtonsContainer}>

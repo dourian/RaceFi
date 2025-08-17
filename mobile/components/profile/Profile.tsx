@@ -16,8 +16,7 @@ import { useChallenge } from "../../contexts/challengeContext";
 
 const Profile: React.FC = () => {
   const { user, signOut } = useAuth();
-  const { resetAllChallenges, simulateCompletedChallengesWithResults } =
-    useChallenge();
+  const { resetAllChallenges } = useChallenge();
   const { resetBalance } = useBalance();
 
   const handleSignOut = async () => {
@@ -58,25 +57,6 @@ const Profile: React.FC = () => {
     );
   };
 
-  const handleSimulateCompletedChallenges = () => {
-    Alert.alert(
-      "Simulate Completed Challenges",
-      "This will simulate all challenges as completed with results. You will be marked as winner of the first challenge.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Simulate",
-          onPress: () => {
-            simulateCompletedChallengesWithResults();
-            Alert.alert(
-              "Success",
-              "All challenges have been simulated as completed with results!",
-            );
-          },
-        },
-      ],
-    );
-  };
 
   return (
     <SafeAreaView
@@ -85,6 +65,7 @@ const Profile: React.FC = () => {
     >
       <ScrollView
         style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
@@ -111,26 +92,13 @@ const Profile: React.FC = () => {
           </Text>
         </View>
 
-        {/* Testing Controls */}
-        <View style={styles.testingSection}>
-          <Text style={styles.testingTitle}>Testing Controls</Text>
-
-          <TouchableOpacity
-            style={styles.simulateButton}
-            onPress={handleSimulateCompletedChallenges}
-          >
-            <Text style={styles.simulateButtonText}>
-              Simulate Completed Races
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.resetButton}
-            onPress={handleResetChallenges}
-          >
-            <Text style={styles.resetButtonText}>Reset All Data</Text>
-          </TouchableOpacity>
-        </View>
+        {/* Settings */}
+        <TouchableOpacity
+          style={styles.resetButton}
+          onPress={handleResetChallenges}
+        >
+          <Text style={styles.resetButtonText}>Reset All Data</Text>
+        </TouchableOpacity>
 
         {/* Sign Out */}
         <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
@@ -151,6 +119,9 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
     paddingHorizontal: spacing.lg,
+  },
+  scrollContent: {
+    paddingBottom: spacing.xxl * 4,
   },
   header: {
     marginBottom: spacing.xl,
@@ -417,27 +388,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.text,
     marginBottom: 10,
-  },
-  testingSection: {
-    marginBottom: spacing.xl,
-  },
-  testingTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: colors.text,
-    marginBottom: spacing.md,
-  },
-  simulateButton: {
-    backgroundColor: "#28a745",
-    padding: 15,
-    borderRadius: 8,
-    alignItems: "center",
-    marginBottom: 15,
-  },
-  simulateButtonText: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "600",
   },
   resetButton: {
     backgroundColor: "#ff9500",
