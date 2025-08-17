@@ -80,24 +80,9 @@ export class ApiService {
       number,
       { name: string; avatar: string | null }
     >();
-    if (creatorIds.length) {
-      const { data: creators, error: creatorsErr } = await supabase
-        .from("profiles")
-        .select("id,first_name,last_name,avatar_url")
-        .in("id", creatorIds);
-      if (creatorsErr) throw creatorsErr;
-      creatorsMap = new Map(
-        (creators || []).map((p: any) => {
-          const first = p?.first_name || "";
-          const last = p?.last_name || "";
-          const name = `${first} ${last}`.trim() || "Challenge Creator";
-          return [
-            p.id as number,
-            { name, avatar: (p?.avatar_url as string) || null },
-          ];
-        }),
-      );
-    }
+    // Note: profiles.id is now UUID (string) while challenges.created_by_profile_id is numeric.
+    // Skipping creator prefetch in list to avoid mismatched join keys.
+    // Creator will appear as default in list view; detailed view attempts direct lookup.
 
     // Derive participants count from challenge_attendees per challenge
     const challengeIds = Array.from(
@@ -163,7 +148,7 @@ export class ApiService {
       const { data: prof, error: pErr } = await supabase
         .from("profiles")
         .select("first_name,last_name,avatar_url")
-        .eq("id", data.created_by_profile_id)
+        .eq("id", String(data.created_by_profile_id))
         .maybeSingle();
       if (pErr) throw pErr;
       if (prof) {
@@ -278,20 +263,16 @@ export class ApiService {
       .select("status,start_time,end_time,profile_id")
       .eq("challenge_id", cid);
     if (attErr) throw attErr;
-    const rows = (attendees || []) as Array<{
-      status: Participant["status"];
-      start_time: string | null;
-      end_time: string | null;
-      profile_id: number | null;
-    }>;
+    const rows = (attendees || []) as any[];
     if (!rows.length) return [];
 
-    // Collect unique profile ids
+    // Collect unique profile ids (UUID strings)
     const ids = Array.from(
       new Set(
         rows
           .map((r) => r.profile_id)
-          .filter((v): v is number => Number.isFinite(v as any)),
+          .filter((v) => v != null)
+          .map((v: any) => String(v)),
       ),
     );
 
@@ -301,20 +282,12 @@ export class ApiService {
       .select("id,first_name,last_name,avatar_url")
       .in("id", ids);
     if (pErr) throw pErr;
-    const pMap = new Map<
-      number,
-      {
-        id: number;
-        first_name: string | null;
-        last_name: string | null;
-        avatar_url: string | null;
-      }
-    >();
-    (profs || []).forEach((p: any) => pMap.set(p.id, p));
+    const pMap = new Map<string, { id: string; first_name: string | null; last_name: string | null; avatar_url: string | null }>();
+    (profs || []).forEach((p: any) => pMap.set(String(p.id), p));
 
     // Merge
     return rows.map((row) => {
-      const p = row.profile_id != null ? pMap.get(row.profile_id) : undefined;
+      const p = row.profile_id ? pMap.get(String(row.profile_id)) : undefined;
       const first = p?.first_name || "";
       const last = p?.last_name || "";
       const name = `${first} ${last}`.trim() || "Participant";
@@ -365,12 +338,12 @@ export class ApiService {
   static async getCurrentUserProfile(): Promise<Tables<"profiles"> | null> {
     const { data: userData, error: userErr } = await supabase.auth.getUser();
     if (userErr) throw userErr;
-    const email = userData.user?.email;
-    if (!email) return null;
+    const uid = userData.user?.id as string | undefined;
+    if (!uid) return null;
     const { data: profile, error: pErr } = await supabase
       .from("profiles")
       .select("*")
-      .eq("email", email)
+      .eq("id", uid)
       .maybeSingle();
     if (pErr) throw pErr;
     return (profile as any) ?? null;
@@ -390,7 +363,7 @@ export class ApiService {
       .from("challenge_attendees")
       .select("*")
       .eq("challenge_id", challengeId)
-      .eq("profile_id", profile.id as number)
+      .eq("profile_id", profile.id as any)
       .maybeSingle();
     if (existErr) throw existErr;
     if (existing) {
@@ -399,7 +372,7 @@ export class ApiService {
 
     const insert = {
       challenge_id: challengeId,
-      profile_id: profile.id as number,
+      profile_id: profile.id as any,
       stake_amount: stakeAmount,
       status: "joined" as any,
     } as TablesInsert<"challenge_attendees">;
