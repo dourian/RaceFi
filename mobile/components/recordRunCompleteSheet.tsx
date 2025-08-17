@@ -9,9 +9,64 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { colors, spacing, typography, shadows } from "../app/theme";
-import { API_URL } from "../app/config";
 import { decodePolyline, haversineMeters } from "../helpers/polyline";
 import polyline from "@mapbox/polyline";
+
+// Direct polyline comparison functions
+const hausdorffDistance = (poly1: number[][], poly2: number[][]) => {
+  const distanceFromPointToSet = (point: number[], set: number[][]) => {
+    let minDist = Infinity;
+    for (const setPoint of set) {
+      const dist = Math.sqrt(
+        Math.pow(point[0] - setPoint[0], 2) + Math.pow(point[1] - setPoint[1], 2)
+      );
+      if (dist < minDist) minDist = dist;
+    }
+    return minDist;
+  };
+
+  let maxDistPoly1 = 0;
+  for (const point of poly1) {
+    const dist = distanceFromPointToSet(point, poly2);
+    if (dist > maxDistPoly1) maxDistPoly1 = dist;
+  }
+
+  let maxDistPoly2 = 0;
+  for (const point of poly2) {
+    const dist = distanceFromPointToSet(point, poly1);
+    if (dist > maxDistPoly2) maxDistPoly2 = dist;
+  }
+
+  return Math.max(maxDistPoly1, maxDistPoly2);
+};
+
+const comparePolylinesDirect = (
+  poly1: number[][],
+  poly2: number[][],
+  thresholdRatio: number = 0.02
+): boolean => {
+  if (poly1.length === 0 || poly2.length === 0) return false;
+
+  // Calculate bounding box diagonal
+  const allPoints = [...poly1, ...poly2];
+  const lats = allPoints.map(p => p[0]);
+  const lngs = allPoints.map(p => p[1]);
+  
+  const minLat = Math.min(...lats);
+  const maxLat = Math.max(...lats);
+  const minLng = Math.min(...lngs);
+  const maxLng = Math.max(...lngs);
+  
+  const bboxDiagonal = Math.sqrt(
+    Math.pow(maxLat - minLat, 2) + Math.pow(maxLng - minLng, 2)
+  );
+
+  if (bboxDiagonal === 0) return false;
+
+  const distance = hausdorffDistance(poly1, poly2);
+  return (distance / bboxDiagonal) < thresholdRatio;
+};
+
 import { ApiService } from "../services/apiService";
 import { ChallengeService } from "../services/challengeService";
 import { RunCalculationService } from "../services/runCalculationService";
@@ -119,22 +174,18 @@ export default function RecordRunCompleteSheet({
 
         // Sequential checks with delays between them
 
-        // 1) Route compare first
+        // 1) Route compare first (direct comparison)
         let routeOk = false;
         if (challengePolyline) {
           try {
-            const resp = await fetch(`${API_URL}/maps/compare`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                polyline1: userPolyline,
-                polyline2: challengePolyline,
-                threshold_ratio: 0.02,
-              }),
-            });
-            if (!resp.ok) throw new Error(await resp.text());
-            const isMatch = await resp.json();
+            // Decode both polylines for direct comparison
+            const userCoords = coords.map(c => [c.latitude, c.longitude]);
+            const challengeCoords = decodePolyline(challengePolyline).map(c => [c.latitude, c.longitude]);
+            
+            // Direct comparison using Hausdorff distance
+            const isMatch = comparePolylinesDirect(userCoords, challengeCoords, 0.05);
             routeOk = !!isMatch;
+            
             if (!isCancelled)
               setRouteCheck({
                 status: routeOk ? "pass" : "fail",

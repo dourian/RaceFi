@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { View, Text, Pressable, StyleSheet, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { router } from "expo-router";
 import {
   colors,
   spacing,
@@ -98,6 +99,17 @@ const WalletBalance: React.FC<WalletBalanceProps> = ({ style }) => {
           </LinearGradient>
         </View>
 
+        {/* Actions */}
+        <View style={styles.actionsRow}>
+          <Pressable
+            style={[styles.buyButton, shadows.button]}
+            onPress={() => router.push("/onramp")}
+          >
+            <Ionicons name="card" size={16} color="white" />
+            <Text style={styles.buyButtonText}>Buy USDC</Text>
+          </Pressable>
+        </View>
+
         {/* Balance Stats */}
         <View style={styles.statsContainer}>
           <View style={styles.statItem}>
@@ -183,6 +195,24 @@ const styles = StyleSheet.create({
   },
   balanceContainer: {
     marginBottom: spacing.lg,
+  },
+  actionsRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    marginBottom: spacing.md,
+  },
+  buyButton: {
+    backgroundColor: "#1652F0", // Coinbase blue
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.lg,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+  },
+  buyButtonText: {
+    color: "white",
+    fontWeight: "600",
   },
   balanceGradient: {
     borderRadius: borderRadius.lg,

@@ -1,4 +1,4 @@
-import { Link, router, useFocusEffect } from "expo-router";
+import { Link, router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   Text,
@@ -25,12 +25,14 @@ export default function BrowseScreen() {
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const currentAppTime = useAppTime(); // Use centralized app time that updates when time changes
 
   // Load challenges function
-  const loadChallenges = useCallback(async () => {
+  const loadChallenges = useCallback(async (opts?: { silent?: boolean }) => {
+    const silent = opts?.silent === true;
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       setError(null);
       const challengesData = await ApiService.getChallenges();
       setChallenges(challengesData);
@@ -38,16 +40,24 @@ export default function BrowseScreen() {
       console.error("Error loading challenges:", err);
       setError("Failed to load challenges");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
-  // Load challenges when screen comes into focus (including initial mount)
-  useFocusEffect(
-    useCallback(() => {
-      loadChallenges();
-    }, [loadChallenges]),
-  );
+  // Pull-to-refresh handler
+  const handleRefresh = useCallback(async () => {
+    try {
+      setRefreshing(true);
+      await loadChallenges({ silent: true });
+    } finally {
+      setRefreshing(false);
+    }
+  }, [loadChallenges]);
+
+  // Load challenges once on mount to preserve scroll position on back
+  useEffect(() => {
+    loadChallenges();
+  }, [loadChallenges]);
 
   // Filter challenges based on current filter
   const filteredChallenges = useMemo(() => {
@@ -255,19 +265,6 @@ export default function BrowseScreen() {
           <Pressable
             style={styles.retryButton}
             onPress={() => {
-              const loadChallenges = async () => {
-                try {
-                  setLoading(true);
-                  setError(null);
-                  const challengesData = await ApiService.getChallenges();
-                  setChallenges(challengesData);
-                } catch (err) {
-                  console.error("Error loading challenges:", err);
-                  setError("Failed to load challenges");
-                } finally {
-                  setLoading(false);
-                }
-              };
               loadChallenges();
             }}
           >
@@ -283,6 +280,8 @@ export default function BrowseScreen() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           style={styles.list}
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
           renderItem={({ item }) => {
             const challengeStatus = getChallengeStatus(item.id);
 

@@ -1,4 +1,4 @@
-import { createContext, useContext, ReactNode, useState } from "react";
+import { createContext, useContext, ReactNode, useEffect, useState } from "react";
 import { timeManager } from "../helpers/timeManager";
 import { ApiService } from "../services/apiService";
 import {
@@ -46,6 +46,37 @@ export const ChallengeProvider: React.FC<{ children: ReactNode }> = ({
   const [userChallengeStatuses, setUserChallengeStatuses] = useState<
     UserChallengeStatus[]
   >([]);
+
+  // Hydrate joined challenges from backend on mount or when user changes
+  useEffect(() => {
+    const hydrateFromServer = async () => {
+      try {
+        const attendees = await ApiService.listCurrentUserAttendees();
+        if (!attendees.length) return;
+        setUserChallengeStatuses((prev) => {
+          const map = new Map(prev.map((s) => [s.challengeId, s] as const));
+          attendees.forEach((a) => {
+            const cid = String(a.challenge_id);
+            const existing = map.get(cid);
+            // Only upgrade to at least "joined" if not already in a more advanced state
+            if (!existing || existing.status === "not-joined") {
+              // Normalize status coming from attendees table; treat any attendee row as joined
+              map.set(cid, {
+                challengeId: cid,
+                status: a.status === "in-progress" || a.status === "completed" ? (a.status as any) : "joined",
+                joinedAt: existing?.joinedAt || new Date(),
+              });
+            }
+          });
+          return Array.from(map.values());
+        });
+      } catch (e) {
+        console.warn("Failed to hydrate challenge statuses:", (e as any)?.message || e);
+      }
+    };
+
+    hydrateFromServer();
+  }, [user?.id]);
 
   const joinChallenge = (challengeId: string) => {
     setUserChallengeStatuses((prev) => {

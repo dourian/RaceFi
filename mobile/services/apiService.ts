@@ -73,18 +73,21 @@ export class ApiService {
       new Set(
         (data || [])
           .map((row) => row.created_by_profile_id)
-          .filter((v): v is number => Number.isFinite(v as any)),
+          .filter((v): v is string => typeof v === "string"),
       ),
     );
 
     // Prefetch creators in bulk (support string ids too)
-    let creatorsMap = new Map<string, { name: string; avatar: string | null }>();
+    let creatorsMap = new Map<
+      string,
+      { name: string; avatar: string | null }
+    >();
     if (creatorIds.length) {
       const creatorIdStrings = creatorIds.map((v) => String(v));
       const { data: creators, error: creatorsErr } = await supabase
         .from("profiles")
         .select("id,first_name,last_name,avatar_url,email")
-        .in("id", creatorIdStrings);
+        .in("id", creatorIdStrings as any);
       if (creatorsErr) throw creatorsErr;
       creatorsMap = new Map(
         (creators || []).map((p: any) => {
@@ -95,7 +98,10 @@ export class ApiService {
             const email = p?.email || "";
             name = email ? String(email).split("@")[0] : "User";
           }
-          return [String(p.id), { name: name || null, avatar: (p?.avatar_url as string) || null }];
+          return [
+            String(p.id),
+            { name: name || null, avatar: (p?.avatar_url as string) || null },
+          ];
         }),
       );
     }
@@ -129,7 +135,7 @@ export class ApiService {
       const creator = row.created_by_profile_id
         ? creatorsMap.get(String(row.created_by_profile_id)) || null
         : null;
-      const participants = attendeeCounts.get(row.id) ?? 0;
+      const participants = attendeeCounts.get(row.id) ?? 0; // Creator is NOT auto-counted
       return ApiService.mapRowToChallenge(row, polyline, creator, participants);
     });
   }
@@ -166,7 +172,7 @@ export class ApiService {
       let profRes = await supabase
         .from("profiles")
         .select("first_name,last_name,avatar_url,email")
-        .eq("id", String(createdBy))
+        .eq("id", createdBy as any) // Adjusted to use 'createdBy' as 'any' to match parameter type
         .maybeSingle();
       if (profRes.error) {
         // Try as numeric id
@@ -253,30 +259,10 @@ export class ApiService {
     // Fetch attendee participants list for detailed view
     let participantsList = await ApiService.getParticipants(String(data.id));
 
-    // Ensure creator appears in participants if not already present
-    try {
-      if (data.created_by_profile_id != null) {
-        const { data: creatorAtt } = await supabase
-          .from("challenge_attendees")
-          .select("id")
-          .eq("challenge_id", data.id)
-          .eq("profile_id", data.created_by_profile_id as number)
-          .maybeSingle();
-        if (!creatorAtt && creator) {
-          participantsList = [
-            {
-              name: creator.name || "Creator",
-              avatar: creator.avatar || null,
-              status: "joined",
-            },
-            ...participantsList,
-          ];
-        }
-      }
-    } catch {}
+    // Do NOT auto-inject creator; only list attendees who actually joined
 
-    // Prefer participantsList length for detail count (keeps UI consistent when creator is shown)
-    const participantsCountForDetail = participantsList.length;
+    // Use attendees count for participants number
+    const participantsCountForDetail = attendeesCount ?? 0;
 
     return ApiService.mapRowToChallenge(
       data,
@@ -331,18 +317,7 @@ export class ApiService {
 
     const challengeId = challengeResult.id;
 
-    // Ensure creator is a participant
-    try {
-      const me = await ApiService.getCurrentUserProfile();
-      if (me?.id) {
-        await supabase.from("challenge_attendees").insert({
-          challenge_id: challengeId,
-          profile_id: me.id as any,
-          stake_amount: 0,
-          status: "joined" as any,
-        } as TablesInsert<"challenge_attendees">);
-      }
-    } catch {}
+    // Do NOT auto-join the creator; they must explicitly stake & join
 
     // Insert track coordinates if provided
     if (polyline) {
@@ -408,7 +383,16 @@ export class ApiService {
       .select("id,first_name,last_name,avatar_url,email")
       .in("id", ids);
     if (pErr) throw pErr;
-    const pMap = new Map<string, { id: string; first_name: string | null; last_name: string | null; avatar_url: string | null; email: string | null }>();
+    const pMap = new Map<
+      string,
+      {
+        id: string;
+        first_name: string | null;
+        last_name: string | null;
+        avatar_url: string | null;
+        email: string | null;
+      }
+    >();
     (profs || []).forEach((p: any) => pMap.set(String(p.id), p));
 
     // Merge
@@ -477,6 +461,41 @@ export class ApiService {
       .maybeSingle();
     if (pErr) throw pErr;
     return (profile as any) ?? null;
+  }
+
+  /**
+   * List challenge attendee rows for the current user
+   * Returns an array of { challenge_id, status } for hydration
+   */
+  static async listCurrentUserAttendees(): Promise<Array<{ challenge_id: number; status: string }>> {
+    const profile = await ApiService.getCurrentUserProfile();
+    if (!profile?.id) return [];
+
+    const { data, error } = await supabase
+      .from("challenge_attendees")
+      .select("challenge_id,status")
+      .eq("profile_id", profile.id as any);
+    if (error) throw error;
+    const rows = (data || []) as any[];
+    return rows
+      .filter((r) => r?.challenge_id != null)
+      .map((r) => ({ challenge_id: Number(r.challenge_id), status: String(r.status || "joined") }));
+  }
+
+  /**
+   * Returns true if current user has already joined the given challenge id
+   */
+  static async hasCurrentUserJoined(challengeId: number): Promise<boolean> {
+    const profile = await ApiService.getCurrentUserProfile();
+    if (!profile?.id) return false;
+    const { data, error } = await supabase
+      .from("challenge_attendees")
+      .select("id")
+      .eq("challenge_id", challengeId)
+      .eq("profile_id", profile.id as any)
+      .maybeSingle();
+    if (error) throw error;
+    return !!data;
   }
 
   static async joinChallengeAsCurrentUser(
@@ -637,7 +656,11 @@ export class ApiService {
       const email = prof?.email || "";
       name = email ? String(email).split("@")[0] : "User";
     }
-    return { name: name || "User", avatar: prof?.avatar_url || null, time: "N/A" };
+    return {
+      name: name || "User",
+      avatar: prof?.avatar_url || null,
+      time: "N/A",
+    };
   }
 
   // (Optional future endpoints left commented)

@@ -5,12 +5,13 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
-  ScrollView,
+  FlatList,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../contexts/authContext";
 import { colors, shadows, spacing, typography } from "../../app/theme";
 import WalletBalance from "../WalletBalance";
+import TokenBalances from "./TokenBalances";
 
 const Profile: React.FC = () => {
   const { user, signOut } = useAuth();
@@ -36,42 +37,50 @@ const Profile: React.FC = () => {
       style={styles.container}
       edges={["top", "left", "right", "bottom"]}
     >
-      <ScrollView
-        style={styles.scrollView}
+      <FlatList
+        data={[]}
+        keyExtractor={(_, i) => String(i)}
+        ListHeaderComponent={
+          <View>
+            <View style={styles.header}>
+              <Text style={styles.headerTitle}>Profile</Text>
+              <Text style={styles.subtitle}>Manage your account and earnings</Text>
+            </View>
+
+            {/* Wallet Balance */}
+            <WalletBalance style={styles.walletBalance} />
+
+            {/* Token Balances (CDP) */}
+            <TokenBalances />
+
+            {/* User Info */}
+            <View style={styles.userInfo}>
+              <Text style={styles.infoLabel}>Email</Text>
+              <Text style={styles.infoValue}>{user?.email}</Text>
+
+              <Text style={styles.infoLabel}>User ID</Text>
+              <Text style={styles.infoValue}>{user?.id}</Text>
+
+              <Text style={styles.infoLabel}>Joined</Text>
+              <Text style={styles.infoValue}>
+                {user?.created_at
+                  ? new Date(user.created_at).toLocaleDateString()
+                  : "N/A"}
+              </Text>
+            </View>
+
+            {/* Sign Out */}
+            <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
+              <Text style={styles.signOutText}>Sign Out</Text>
+            </TouchableOpacity>
+
+            <View style={styles.bottomPadding} />
+          </View>
+        }
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Profile</Text>
-          <Text style={styles.subtitle}>Manage your account and earnings</Text>
-        </View>
-
-        {/* Wallet Balance */}
-        <WalletBalance style={styles.walletBalance} />
-
-        {/* User Info */}
-        <View style={styles.userInfo}>
-          <Text style={styles.infoLabel}>Email</Text>
-          <Text style={styles.infoValue}>{user?.email}</Text>
-
-          <Text style={styles.infoLabel}>User ID</Text>
-          <Text style={styles.infoValue}>{user?.id}</Text>
-
-          <Text style={styles.infoLabel}>Joined</Text>
-          <Text style={styles.infoValue}>
-            {user?.created_at
-              ? new Date(user.created_at).toLocaleDateString()
-              : "N/A"}
-          </Text>
-        </View>
-
-        {/* Sign Out */}
-        <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
-          <Text style={styles.signOutText}>Sign Out</Text>
-        </TouchableOpacity>
-
-        <View style={styles.bottomPadding} />
-      </ScrollView>
+        nestedScrollEnabled
+      />
     </SafeAreaView>
   );
 };

@@ -16,10 +16,7 @@
         "NSLocationWhenInUseUsageDescription": "RaceFi uses your location to track runs during a challenge.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "RaceFi uses your location to track runs during a challenge and provide accurate fitness tracking.",
         "NSLocationAlwaysUsageDescription": "RaceFi uses your location to track runs during a challenge and provide accurate fitness tracking.",
-        "UIBackgroundModes": [
-          "location",
-          "background-processing"
-        ]
+        "UIBackgroundModes": ["location"]
       }
     },
     "android": {
@@ -28,10 +25,7 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "permissions": [
-        "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION"
-      ]
+      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"]
     },
     "web": {
       "bundler": "metro",
@@ -54,7 +48,9 @@
       "router": {},
       "eas": {
         "projectId": "4fe0683b-afd8-4aae-85e3-af84b0649d46"
-      }
+      },
+      "EXPO_PUBLIC_API_URL": "http://localhost:3001",
+      "EXPO_PUBLIC_TOKEN_API_URL": "http://localhost:3011"
     },
     "owner": "mastersuperd"
   }
