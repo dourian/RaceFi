@@ -68,13 +68,6 @@ export type Database = {
             referencedRelation: "challenges";
             referencedColumns: ["id"];
           },
-          {
-            foreignKeyName: "challenge_attendees_profile_id_fkey";
-            columns: ["profile_id"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
-          },
         ];
       };
       challenges: {
@@ -129,15 +122,7 @@ export type Database = {
           start_date?: string;
           updated_at?: string | null;
         };
-        Relationships: [
-          {
-            foreignKeyName: "challenges_created_by_profile_id_fkey";
-            columns: ["created_by_profile_id"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
-          },
-        ];
+        Relationships: [];
       };
       profiles: {
         Row: {
@@ -145,7 +130,7 @@ export type Database = {
           created_at: string;
           email: string | null;
           first_name: string | null;
-          id: number;
+          id: string;
           last_name: string | null;
           updated_at: string | null;
         };
@@ -154,7 +139,7 @@ export type Database = {
           created_at?: string;
           email?: string | null;
           first_name?: string | null;
-          id?: number;
+          id: string;
           last_name?: string | null;
           updated_at?: string | null;
         };
@@ -163,7 +148,7 @@ export type Database = {
           created_at?: string;
           email?: string | null;
           first_name?: string | null;
-          id?: number;
+          id?: string;
           last_name?: string | null;
           updated_at?: string | null;
         };
