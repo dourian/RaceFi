@@ -287,8 +287,8 @@ class DeployContractRequest(BaseModel):
 
 class MintFloatingLineRequest(BaseModel):
     polyline: str
-    contract_address: str = "0x02f07A7DDAb530B5BF1FE4D26a297ea1CE7e85fA"
     recipient: str
+    contract_address: str = "0x02f07A7DDAb530B5BF1FE4D26a297ea1CE7e85fA"
     name: str = "Floating Line NFT"
     description: str = "A 3D floating line NFT"
 
