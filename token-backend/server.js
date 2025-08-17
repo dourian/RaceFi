@@ -10,7 +10,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const PORT = process.env.PORT || 3011;
+const PORT = process.env.PORT || 8002;
 const KEY_NAME = process.env.KEY_NAME;
 const KEY_SECRET = process.env.KEY_SECRET;
 
