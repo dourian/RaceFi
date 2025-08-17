@@ -63,16 +63,7 @@ export class LeaderboardService {
   ): LeaderboardData {
     const entries: LeaderboardEntry[] = [];
 
-    // Challenge Creator (always first)
-    entries.push({
-      id: "creator",
-      name: challenge.creator.name,
-      avatar: challenge.creator.avatar,
-      status: "completed",
-      isCurrentUser: false,
-    });
-
-    // Other Participants
+    // Participants (including creator if present in the list)
     challenge.participantsList.forEach((participant, index) => {
       entries.push({
         id: `participant-${index}`,
@@ -130,16 +121,7 @@ export class LeaderboardService {
       currentRanking = 2;
     }
 
-    // Challenge Creator
-    entries.push({
-      id: "creator",
-      name: challenge.creator.name,
-      avatar: challenge.creator.avatar,
-      status: "completed",
-      isCurrentUser: false,
-      ranking: currentRanking,
-    });
-    currentRanking++;
+    // Top completed participants (creator will appear if in list)
 
     // Other Completed Participants
     const completedParticipants = challenge.participantsList.filter(

@@ -30,7 +30,7 @@ export class ApiService {
       Math.round(windowMs / (1000 * 60 * 60 * 24)),
     );
 
-    const derivedParticipants = (participantsCountOverride ?? 0) + 1;
+    const derivedParticipants = participantsCountOverride ?? 0;
 
     return {
       id: String(row.id),
@@ -47,6 +47,7 @@ export class ApiService {
       location: row.location,
       startDate,
       endDate,
+      creatorProfileId: (row as any).created_by_profile_id ?? null,
       creator: {
         name: creator?.name || "Challenge Creator",
         avatar: creator?.avatar ?? null,
@@ -76,13 +77,28 @@ export class ApiService {
       ),
     );
 
-    let creatorsMap = new Map<
-      number,
-      { name: string; avatar: string | null }
-    >();
-    // Note: profiles.id is now UUID (string) while challenges.created_by_profile_id is numeric.
-    // Skipping creator prefetch in list to avoid mismatched join keys.
-    // Creator will appear as default in list view; detailed view attempts direct lookup.
+    // Prefetch creators in bulk (support string ids too)
+    let creatorsMap = new Map<string, { name: string; avatar: string | null }>();
+    if (creatorIds.length) {
+      const creatorIdStrings = creatorIds.map((v) => String(v));
+      const { data: creators, error: creatorsErr } = await supabase
+        .from("profiles")
+        .select("id,first_name,last_name,avatar_url,email")
+        .in("id", creatorIdStrings);
+      if (creatorsErr) throw creatorsErr;
+      creatorsMap = new Map(
+        (creators || []).map((p: any) => {
+          const first = p?.first_name || "";
+          const last = p?.last_name || "";
+          let name = `${first} ${last}`.trim();
+          if (!name) {
+            const email = p?.email || "";
+            name = email ? String(email).split("@")[0] : "User";
+          }
+          return [String(p.id), { name: name || null, avatar: (p?.avatar_url as string) || null }];
+        }),
+      );
+    }
 
     // Derive participants count from challenge_attendees per challenge
     const challengeIds = Array.from(
@@ -111,7 +127,7 @@ export class ApiService {
     return (data || []).map((row) => {
       const polyline = tracks?.find((t) => t.challenge_id === row.id)?.polyline;
       const creator = row.created_by_profile_id
-        ? creatorsMap.get(row.created_by_profile_id) || null
+        ? creatorsMap.get(String(row.created_by_profile_id)) || null
         : null;
       const participants = attendeeCounts.get(row.id) ?? 0;
       return ApiService.mapRowToChallenge(row, polyline, creator, participants);
@@ -142,23 +158,88 @@ export class ApiService {
       .maybeSingle();
     if (trackError) throw trackError;
 
-    // Fetch creator profile if available
+    // Fetch creator profile if available (support numeric or UUID)
     let creator: { name: string; avatar: string | null } | null = null;
-    if (data.created_by_profile_id) {
-      const { data: prof, error: pErr } = await supabase
+    const createdBy = (data as any)?.created_by_profile_id;
+    if (createdBy != null) {
+      // Try as string UUID
+      let profRes = await supabase
         .from("profiles")
-        .select("first_name,last_name,avatar_url")
-        .eq("id", String(data.created_by_profile_id))
+        .select("first_name,last_name,avatar_url,email")
+        .eq("id", String(createdBy))
         .maybeSingle();
-      if (pErr) throw pErr;
-      if (prof) {
-        const first = (prof as any)?.first_name || "";
-        const last = (prof as any)?.last_name || "";
-        const name = `${first} ${last}`.trim() || "Challenge Creator";
+      if (profRes.error) {
+        // Try as numeric id
+        profRes = await supabase
+          .from("profiles")
+          .select("first_name,last_name,avatar_url,email")
+          .eq("id", createdBy as number)
+          .maybeSingle();
+      }
+      if (!profRes.error && profRes.data) {
+        const first = (profRes.data as any)?.first_name || "";
+        const last = (profRes.data as any)?.last_name || "";
+        let name = `${first} ${last}`.trim();
+        if (!name) {
+          const email = (profRes.data as any)?.email || "";
+          name = email ? String(email).split("@")[0] : "User";
+        }
         creator = {
           name,
-          avatar: ((prof as any)?.avatar_url as string) || null,
+          avatar: ((profRes.data as any)?.avatar_url as string) || null,
         };
+      }
+      // As a last resort, try profiles.user_id == auth user id, if created_by_profile_id stores user id
+      if (!creator) {
+        const res2 = await supabase
+          .from("profiles")
+          .select("first_name,last_name,avatar_url,email")
+          .eq("user_id", String(createdBy))
+          .maybeSingle();
+        if (!res2.error && res2.data) {
+          const first = (res2.data as any)?.first_name || "";
+          const last = (res2.data as any)?.last_name || "";
+          let name = `${first} ${last}`.trim();
+          if (!name) {
+            const email = (res2.data as any)?.email || "";
+            name = email ? String(email).split("@")[0] : "User";
+          }
+          creator = {
+            name,
+            avatar: ((res2.data as any)?.avatar_url as string) || null,
+          };
+        }
+      }
+    }
+
+    // Fallback: use earliest attendee's profile as creator if not resolved
+    if (!creator) {
+      const { data: firstAttendee } = await supabase
+        .from("challenge_attendees")
+        .select("profile_id,created_at")
+        .eq("challenge_id", data.id)
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      if (firstAttendee?.profile_id != null) {
+        const { data: prof2 } = await supabase
+          .from("profiles")
+          .select("first_name,last_name,avatar_url,email")
+          .eq("id", firstAttendee.profile_id as number)
+          .maybeSingle();
+        if (prof2) {
+          const first = (prof2 as any)?.first_name || "";
+          const last = (prof2 as any)?.last_name || "";
+          let name = `${first} ${last}`.trim();
+          if (!name) {
+            const email = (prof2 as any)?.email || "";
+            name = email ? String(email).split("@")[0] : "User";
+          }
+          creator = {
+            name: name || "",
+            avatar: ((prof2 as any)?.avatar_url as string) || null,
+          };
+        }
       }
     }
 
@@ -170,13 +251,38 @@ export class ApiService {
     if (cntErr) throw cntErr;
 
     // Fetch attendee participants list for detailed view
-    const participantsList = await ApiService.getParticipants(String(data.id));
+    let participantsList = await ApiService.getParticipants(String(data.id));
+
+    // Ensure creator appears in participants if not already present
+    try {
+      if (data.created_by_profile_id != null) {
+        const { data: creatorAtt } = await supabase
+          .from("challenge_attendees")
+          .select("id")
+          .eq("challenge_id", data.id)
+          .eq("profile_id", data.created_by_profile_id as number)
+          .maybeSingle();
+        if (!creatorAtt && creator) {
+          participantsList = [
+            {
+              name: creator.name || "Creator",
+              avatar: creator.avatar || null,
+              status: "joined",
+            },
+            ...participantsList,
+          ];
+        }
+      }
+    } catch {}
+
+    // Prefer participantsList length for detail count (keeps UI consistent when creator is shown)
+    const participantsCountForDetail = participantsList.length;
 
     return ApiService.mapRowToChallenge(
       data,
       (track as any)?.polyline,
       creator,
-      attendeesCount ?? 0,
+      participantsCountForDetail,
       participantsList,
     );
   }
@@ -198,9 +304,17 @@ export class ApiService {
     } as TablesInsert<"challenges">;
 
     // Insert challenge
+    // Attach creator profile id (UUID) if available
+    try {
+      const me = await ApiService.getCurrentUserProfile();
+      if (me?.id) {
+        (challengeInsert as any).created_by_profile_id = me.id as any;
+      }
+    } catch {}
+
     const { data: challengeResult, error: challengeError } = await supabase
       .from("challenges")
-      .insert(challengeInsert)
+      .insert(challengeInsert as any)
       .select()
       .single();
 
@@ -216,6 +330,19 @@ export class ApiService {
     }
 
     const challengeId = challengeResult.id;
+
+    // Ensure creator is a participant
+    try {
+      const me = await ApiService.getCurrentUserProfile();
+      if (me?.id) {
+        await supabase.from("challenge_attendees").insert({
+          challenge_id: challengeId,
+          profile_id: me.id as any,
+          stake_amount: 0,
+          status: "joined" as any,
+        } as TablesInsert<"challenge_attendees">);
+      }
+    } catch {}
 
     // Insert track coordinates if provided
     if (polyline) {
@@ -271,18 +398,17 @@ export class ApiService {
       new Set(
         rows
           .map((r) => r.profile_id)
-          .filter((v) => v != null)
-          .map((v: any) => String(v)),
+          .filter((v): v is number => typeof v === "number"),
       ),
     );
 
-    // Step 2: fetch profiles in bulk
+    // Step 2: fetch profiles in bulk by numeric ids
     const { data: profs, error: pErr } = await supabase
       .from("profiles")
-      .select("id,first_name,last_name,avatar_url")
+      .select("id,first_name,last_name,avatar_url,email")
       .in("id", ids);
     if (pErr) throw pErr;
-    const pMap = new Map<string, { id: string; first_name: string | null; last_name: string | null; avatar_url: string | null }>();
+    const pMap = new Map<string, { id: string; first_name: string | null; last_name: string | null; avatar_url: string | null; email: string | null }>();
     (profs || []).forEach((p: any) => pMap.set(String(p.id), p));
 
     // Merge
@@ -290,7 +416,11 @@ export class ApiService {
       const p = row.profile_id ? pMap.get(String(row.profile_id)) : undefined;
       const first = p?.first_name || "";
       const last = p?.last_name || "";
-      const name = `${first} ${last}`.trim() || "Participant";
+      let name = `${first} ${last}`.trim();
+      if (!name) {
+        const email = p?.email || "";
+        name = email ? email.split("@")[0] : "User";
+      }
       return {
         name,
         avatar: p?.avatar_url || null,
@@ -343,7 +473,7 @@ export class ApiService {
     const { data: profile, error: pErr } = await supabase
       .from("profiles")
       .select("*")
-      .eq("id", uid)
+      .eq("user_id", uid)
       .maybeSingle();
     if (pErr) throw pErr;
     return (profile as any) ?? null;
@@ -368,6 +498,23 @@ export class ApiService {
     if (existErr) throw existErr;
     if (existing) {
       return existing as Tables<"challenge_attendees">;
+    }
+
+    // Enforce max participants
+    const { data: ch, error: chErr } = await supabase
+      .from("challenges")
+      .select("id,max_participants")
+      .eq("id", challengeId)
+      .maybeSingle();
+    if (chErr) throw chErr;
+    if (ch) {
+      const { count } = await supabase
+        .from("challenge_attendees")
+        .select("id", { count: "exact", head: true })
+        .eq("challenge_id", challengeId);
+      if ((count || 0) >= (ch as any).max_participants) {
+        throw new Error("Challenge is full");
+      }
     }
 
     const insert = {
@@ -478,15 +625,19 @@ export class ApiService {
 
     const { data: prof, error: pErr } = await supabase
       .from("profiles")
-      .select("first_name,last_name,avatar_url")
+      .select("first_name,last_name,avatar_url,email")
       .eq("id", pid)
       .maybeSingle();
     if (pErr) throw pErr;
 
     const first = prof?.first_name || "";
     const last = prof?.last_name || "";
-    const name = `${first} ${last}`.trim() || "Challenge Creator";
-    return { name, avatar: prof?.avatar_url || null, time: "N/A" };
+    let name = `${first} ${last}`.trim();
+    if (!name) {
+      const email = prof?.email || "";
+      name = email ? String(email).split("@")[0] : "User";
+    }
+    return { name: name || "User", avatar: prof?.avatar_url || null, time: "N/A" };
   }
 
   // (Optional future endpoints left commented)

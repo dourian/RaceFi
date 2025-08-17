@@ -35,6 +35,7 @@ import { useAppTime, getCurrentAppTime } from "../../helpers/timeManager";
 export default function ChallengeDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [challenge, setChallenge] = useState<Challenge | null>(null);
+  const [currentProfileId, setCurrentProfileId] = useState<string | number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { getChallengeStatus, joinChallenge, startChallengeRun } =
@@ -62,12 +63,27 @@ export default function ChallengeDetail() {
     loadChallenge();
   }, [id]);
 
+  // Load current user profile id
+  useEffect(() => {
+    const loadMe = async () => {
+      try {
+        const me: any = await ApiService.getCurrentUserProfile();
+        if (me?.id != null) setCurrentProfileId(me.id as any);
+      } catch {}
+    };
+    loadMe();
+  }, []);
+
   const challengeStatus = getChallengeStatus(id || "");
   const isJoined = challengeStatus.status !== "not-joined";
   const isCompleted = challengeStatus.status === "completed";
   const isWinner = challengeStatus.status === "winner";
   const isCashedOut = challengeStatus.status === "cashOut";
   const isInProgress = challengeStatus.status === "in-progress";
+  const isCreator =
+    currentProfileId != null &&
+    challenge?.creatorProfileId != null &&
+    Number(currentProfileId) === Number(challenge.creatorProfileId);
 
   // Calculate actual time remaining using challenge end date and current app time
   const getTimeRemaining = () => {
@@ -191,7 +207,17 @@ export default function ChallengeDetail() {
       return;
     }
 
-    if (!id || !challenge || joining) return;
+if (!id || !challenge || joining) return;
+
+    if (isCreator) {
+      Alert.alert("Creator", "You are the creator and already a participant.");
+      return;
+    }
+
+    if (challenge.participants >= challenge.maxParticipants) {
+      Alert.alert("Challenge Full", "This challenge has reached the maximum number of participants.");
+      return;
+    }
 
     try {
       setJoining(true);
@@ -404,14 +430,24 @@ export default function ChallengeDetail() {
                   </View>
                   <Pressable
                     onPress={handleJoinChallenge}
-                    disabled={joining}
+                    disabled={
+                      joining ||
+                      challenge.participants >= challenge.maxParticipants ||
+                      isCreator
+                    }
                     style={[
                       styles.joinButton,
-                      joining ? { opacity: 0.7 } : null,
+                      (joining || challenge.participants >= challenge.maxParticipants || isCreator) ? { opacity: 0.7 } : null,
                     ]}
                   >
                     <Text style={styles.joinButtonText}>
-                      {joining ? "Joining..." : "Stake & Join Challenge"}
+                      {challenge.participants >= challenge.maxParticipants
+                        ? "Challenge Full"
+                        : isCreator
+                          ? "Creator"
+                          : joining
+                            ? "Joining..."
+                            : "Stake & Join Challenge"}
                     </Text>
                   </Pressable>
                   <Text style={styles.stakeDisclaimer}>

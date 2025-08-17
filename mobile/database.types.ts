@@ -137,7 +137,6 @@ export type Database = {
             referencedColumns: ["id"];
           }
         ];
-        Relationships: [];
       };
       profiles: {
         Row: {
@@ -145,27 +144,30 @@ export type Database = {
           created_at: string;
           email: string | null;
           first_name: string | null;
-          id: string;
+          id: number;
           last_name: string | null;
           updated_at: string | null;
+          user_id: string | null;
         };
         Insert: {
           avatar_url?: string | null;
           created_at?: string;
           email?: string | null;
           first_name?: string | null;
-          id: string;
+          id?: number;
           last_name?: string | null;
           updated_at?: string | null;
+          user_id?: string | null;
         };
         Update: {
           avatar_url?: string | null;
           created_at?: string;
           email?: string | null;
           first_name?: string | null;
-          id?: string;
+          id?: number;
           last_name?: string | null;
           updated_at?: string | null;
+          user_id?: string | null;
         };
         Relationships: [];
       };
