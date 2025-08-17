@@ -1,5 +1,6 @@
-import { Challenge } from "../constants/types";
+import { Challenge, Participant } from "../constants/types";
 import { UserChallengeStatus } from "./challengeService";
+import { ChallengeService } from "./challengeService";
 
 export interface LeaderboardEntry {
   id: string;
@@ -29,12 +30,23 @@ export class LeaderboardService {
    */
   static generateLeaderboard(
     challenge: Challenge,
-    userStatus: UserChallengeStatus,
+    userStatus: UserChallengeStatus
   ): LeaderboardData {
     const isCompleted = ["completed", "winner", "cashOut"].includes(
-      userStatus.status,
+      userStatus.status
     );
-    const isWinner = ["winner", "cashOut"].includes(userStatus.status);
+
+    // Calculate real winner based on participant completion times
+    const winnerInfo = ChallengeService.calculateWinner(
+      challenge.participantsList
+    );
+
+    const isWinner = winnerInfo
+      ? ChallengeService.isParticipantWinner(
+          { name: "You", avatar: null, status: userStatus.status as any },
+          challenge.participantsList
+        )
+      : false;
     const isCashedOut = userStatus.status === "cashOut";
 
     if (!isCompleted) {
@@ -48,6 +60,7 @@ export class LeaderboardService {
       userStatus,
       isWinner,
       isCashedOut,
+      winnerInfo
     );
   }
 
@@ -59,7 +72,7 @@ export class LeaderboardService {
    */
   private static generateParticipantsList(
     challenge: Challenge,
-    userStatus: UserChallengeStatus,
+    userStatus: UserChallengeStatus
   ): LeaderboardData {
     const entries: LeaderboardEntry[] = [];
 
@@ -88,6 +101,7 @@ export class LeaderboardService {
    * @param userStatus Current user's challenge status
    * @param isWinner Whether current user won
    * @param isCashedOut Whether current user cashed out
+   * @param winnerInfo Winner information from real calculation
    * @returns Leaderboard data with final rankings
    */
   private static generateFinalRankings(
@@ -95,69 +109,95 @@ export class LeaderboardService {
     userStatus: UserChallengeStatus,
     isWinner: boolean,
     isCashedOut: boolean,
+    winnerInfo: {
+      winner: Participant;
+      winningTime: number;
+      allCompletedParticipants: Participant[];
+    } | null
   ): LeaderboardData {
     const entries: LeaderboardEntry[] = [];
     let currentRanking = 1;
     let userRanking: number | undefined;
 
-    // Winner (Current User) - Always show first if they won or cashed out
-    if (isWinner || isCashedOut) {
-      entries.push({
-        id: "current-user-winner",
-        name: "You",
-        status: isCashedOut ? "cashOut" : "winner",
-        isCurrentUser: true,
-        ranking: 1,
-        runTime: userStatus.runData
-          ? this.formatRunTime(userStatus.runData.duration)
-          : undefined,
-        prizeAmount: isCashedOut
-          ? userStatus.winnerRewards
-          : isWinner
+    if (winnerInfo) {
+      // Display real rankings based on completion times
+      winnerInfo.allCompletedParticipants.forEach((participant, index) => {
+        const isCurrentUser =
+          participant.name === "You" ||
+          (userStatus.runData &&
+            participant.duration_seconds === userStatus.runData.duration);
+
+        entries.push({
+          id: `participant-${index}`,
+          name: participant.name,
+          avatar: participant.avatar,
+          status: index === 0 ? "winner" : "completed",
+          isCurrentUser,
+          ranking: currentRanking,
+          runTime: participant.duration_seconds
+            ? this.formatRunTime(participant.duration_seconds)
+            : undefined,
+          prizeAmount: index === 0 ? challenge.prizePool : undefined,
+        });
+        currentRanking++;
+      });
+    } else {
+      // Fallback to old logic if no winner info available
+      // Winner (Current User) - Always show first if they won or cashed out
+      if (isWinner || isCashedOut) {
+        entries.push({
+          id: "current-user-winner",
+          name: "You",
+          status: isCashedOut ? "cashOut" : "winner",
+          isCurrentUser: true,
+          ranking: 1,
+          runTime: userStatus.runData
+            ? this.formatRunTime(userStatus.runData.duration)
+            : undefined,
+          prizeAmount: isCashedOut
+            ? userStatus.winnerRewards
+            : isWinner
             ? userStatus.winnerRewards
             : undefined,
-      });
-      userRanking = 1;
-      currentRanking = 2;
-    }
+        });
+        currentRanking = 2;
+      }
 
-    // Top completed participants (creator will appear if in list)
-
-    // Other Completed Participants
-    const completedParticipants = challenge.participantsList.filter(
-      (p) => p.status === "completed",
-    );
-    completedParticipants.slice(0, 3).forEach((participant, index) => {
-      entries.push({
-        id: `completed-${index}`,
-        name: participant.name,
-        avatar: participant.avatar,
-        status: "completed",
-        isCurrentUser: false,
-        ranking: currentRanking,
+      // Other Completed Participants
+      const completedParticipants = challenge.participantsList.filter(
+        (p) => p.status === "completed"
+      );
+      completedParticipants.slice(0, 3).forEach((participant, index) => {
+        entries.push({
+          id: `completed-${index}`,
+          name: participant.name,
+          avatar: participant.avatar,
+          status: "completed",
+          isCurrentUser: false,
+          ranking: currentRanking,
+        });
+        currentRanking++;
       });
-      currentRanking++;
-    });
 
-    // Non-winner current user (if they completed but didn't win)
-    if (!isWinner && !isCashedOut && userStatus.status === "completed") {
-      entries.push({
-        id: "current-user-completed",
-        name: "You",
-        status: "completed",
-        isCurrentUser: true,
-        ranking: currentRanking,
-        runTime: userStatus.runData
-          ? this.formatRunTime(userStatus.runData.duration)
-          : undefined,
-      });
-      userRanking = currentRanking;
-      currentRanking++;
+      // Non-winner current user (if they completed but didn't win)
+      if (!isWinner && !isCashedOut && userStatus.status === "completed") {
+        entries.push({
+          id: "current-user-completed",
+          name: "You",
+          status: "completed",
+          isCurrentUser: true,
+          ranking: currentRanking,
+          runTime: userStatus.runData
+            ? this.formatRunTime(userStatus.runData.duration)
+            : undefined,
+        });
+        currentRanking++;
+      }
     }
 
     // Remaining joined participants who haven't completed
     const joinedParticipants = challenge.participantsList.filter(
-      (p) => p.status === "joined",
+      (p) => p.status === "joined"
     );
     joinedParticipants.slice(0, 2).forEach((participant, index) => {
       entries.push({
@@ -182,7 +222,11 @@ export class LeaderboardService {
       totalParticipants: challenge.participants,
       userRanking,
       isCompleted: true,
-      message,
+      message: winnerInfo
+        ? `🏆 ${winnerInfo.winner.name} won with ${this.formatRunTime(
+            winnerInfo.winningTime
+          )}!`
+        : message,
     };
   }
 
@@ -207,7 +251,7 @@ export class LeaderboardService {
   static getLeaderboardTitle(
     isCompleted: boolean,
     totalParticipants: number,
-    maxParticipants: number,
+    maxParticipants: number
   ): string {
     if (isCompleted) {
       return "Final Rankings";

@@ -3,6 +3,8 @@ export type Participant = {
   avatar: any;
   status: "completed" | "running" | "joined";
   time?: string;
+  duration_seconds?: number; // Duration in seconds for completed runs
+  completion_time?: string; // When the run was completed
 };
 
 export type Challenge = {

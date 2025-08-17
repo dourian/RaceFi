@@ -82,6 +82,7 @@ interface RecordRunCompleteSheetProps {
   onReset: () => void;
   challengeId?: string;
   maxSpeedKmh?: number;
+  challenge?: any; // Add challenge prop to access participant data
 }
 
 export default function RecordRunCompleteSheet({
@@ -94,6 +95,7 @@ export default function RecordRunCompleteSheet({
   onReset,
   challengeId,
   maxSpeedKmh,
+  challenge, // Add challenge prop to access participant data
 }: RecordRunCompleteSheetProps) {
   const windowHeight = Dimensions.get("window").height;
   const sheetHeight = windowHeight * 0.55;
@@ -306,18 +308,29 @@ export default function RecordRunCompleteSheet({
   };
 
   const comparison = useMemo(() => {
-    if (!challengeId) return null;
+    if (!challengeId || !challenge) return null;
     try {
-      const mockWinner = ChallengeService.createMockRunData(challengeId, true);
-      const winnerDuration = mockWinner.duration;
-      const delta = durationSeconds - winnerDuration;
+      // Calculate real winner based on participant completion times
+      const winnerInfo = ChallengeService.calculateWinner(challenge.participantsList || []);
+      
+      if (!winnerInfo) {
+        // No completed participants yet, compare against a reasonable benchmark
+        const benchmarkTime = challenge.distanceKm * 4 * 60; // 4 min/km benchmark
+        const delta = durationSeconds - benchmarkTime;
+        const deltaLabel = RunCalculationService.formatDuration(Math.abs(delta));
+        const isWinner = delta <= 0;
+        return { isWinner, deltaSeconds: delta, deltaLabel, isBenchmark: true };
+      }
+      
+      // Compare against the actual winner's time
+      const delta = durationSeconds - winnerInfo.winningTime;
       const deltaLabel = RunCalculationService.formatDuration(Math.abs(delta));
       const isWinner = delta <= 0;
-      return { isWinner, deltaSeconds: delta, deltaLabel };
+      return { isWinner, deltaSeconds: delta, deltaLabel, isBenchmark: false, winnerInfo };
     } catch {
       return null;
     }
-  }, [challengeId, durationSeconds]);
+  }, [challengeId, durationSeconds, challenge]);
 
   const titleText = verifying ? "Verifying run…" : "Run Complete!";
   const subtitleText = "Nice work! Review your stats below.";
@@ -397,9 +410,18 @@ export default function RecordRunCompleteSheet({
             ]}
           >
             {comparison.isWinner
-              ? `🏆 You beat the current best by ${comparison.deltaLabel}`
-              : `−${comparison.deltaLabel} behind current best`}
+              ? comparison.isBenchmark
+                ? `🏆 You beat the ${challenge.distanceKm}km benchmark!`
+                : `🏆 You beat ${comparison.winnerInfo?.winner.name || "the winner"}!`
+              : comparison.isBenchmark
+                ? `You're ${comparison.deltaLabel} behind the ${challenge.distanceKm}km benchmark`
+                : `You're ${comparison.deltaLabel} behind ${comparison.winnerInfo?.winner.name || "the winner"}`}
           </Text>
+          {comparison.winnerInfo && (
+            <Text style={styles.winnerTimeText}>
+              🥇 Winning time: {RunCalculationService.formatDuration(comparison.winnerInfo.winningTime)}
+            </Text>
+          )}
         </View>
       )}
 
@@ -521,6 +543,11 @@ const styles = StyleSheet.create({
   },
   winnerText: {
     color: "#B8860B",
+  },
+  winnerTimeText: {
+    ...typography.meta,
+    color: colors.textMuted,
+    marginTop: 4,
   },
   button: {
     borderRadius: 12,

@@ -21,14 +21,14 @@ export class ApiService {
     polyline?: string | null,
     creator?: { name: string; avatar: string | null; time?: string } | null,
     participantsCountOverride?: number,
-    participantsListOverride?: Participant[],
+    participantsListOverride?: Participant[]
   ): Challenge {
     const startDate = row.start_date ? new Date(row.start_date) : new Date();
     const endDate = row.end_date ? new Date(row.end_date) : new Date();
     const windowMs = Math.max(0, endDate.getTime() - startDate.getTime());
     const windowDays = Math.max(
       1,
-      Math.round(windowMs / (1000 * 60 * 60 * 24)),
+      Math.round(windowMs / (1000 * 60 * 60 * 24))
     );
 
     const derivedParticipants = participantsCountOverride ?? 0;
@@ -74,8 +74,8 @@ export class ApiService {
       new Set(
         (data || [])
           .map((row) => row.created_by_profile_id)
-          .filter((v): v is string => typeof v === "string"),
-      ),
+          .filter((v) => v != null)
+      )
     );
 
     // Prefetch creators in bulk (support string ids too)
@@ -103,7 +103,7 @@ export class ApiService {
             String(p.id),
             { name: name || null, avatar: (p?.avatar_url as string) || null },
           ];
-        }),
+        })
       );
     }
 
@@ -112,8 +112,8 @@ export class ApiService {
       new Set(
         (data || [])
           .map((r) => r.id)
-          .filter((v): v is number => Number.isFinite(v as any)),
-      ),
+          .filter((v): v is number => Number.isFinite(v as any))
+      )
     );
     let attendeeCounts = new Map<number, number>();
     if (challengeIds.length) {
@@ -258,7 +258,9 @@ export class ApiService {
     if (cntErr) throw cntErr;
 
     // Fetch attendee participants list for detailed view
-    let participantsList = await ApiService.getParticipants(String(data.id));
+    let participantsList = await ApiService.getParticipantsByChallengeId(
+      String(data.id)
+    );
 
     // Do NOT auto-inject creator; only list attendees who actually joined
 
@@ -270,12 +272,12 @@ export class ApiService {
       (track as any)?.polyline,
       creator,
       participantsCountForDetail,
-      participantsList,
+      participantsList
     );
   }
 
   static async createChallenge(
-    challengeData: ChallengeCreateRequest,
+    challengeData: ChallengeCreateRequest
   ): Promise<Challenge> {
     // Validate dates (basic validation)
     const startDate = new Date(challengeData.start_date);
@@ -327,7 +329,10 @@ export class ApiService {
       const stakeWei = "1000000000000000";
       const start = new Date(challengeFields.start_date as any);
       const end = new Date(challengeFields.end_date as any);
-      const joinWindowSeconds = Math.max(3600, Math.floor((end.getTime() - start.getTime()) / 1000));
+      const joinWindowSeconds = Math.max(
+        3600,
+        Math.floor((end.getTime() - start.getTime()) / 1000)
+      );
 
       const createRes = await fetch(`${base}/escrow/create`, {
         method: "POST",
@@ -359,7 +364,10 @@ export class ApiService {
             .update(updates)
             .eq("id", challengeId);
         } catch (e) {
-          console.warn("on-chain create fields update skipped:", (e as any)?.message || String(e));
+          console.warn(
+            "on-chain create fields update skipped:",
+            (e as any)?.message || String(e)
+          );
         }
       }
     } catch (e) {
@@ -386,7 +394,7 @@ export class ApiService {
 
   static async updateChallenge(
     id: number,
-    updates: TablesUpdate<"challenges">,
+    updates: TablesUpdate<"challenges">
   ): Promise<Tables<"challenges">> {
     const { data, error } = await supabase
       .from("challenges")
@@ -404,14 +412,30 @@ export class ApiService {
   }
 
   // Participant-related methods
-  static async getParticipants(challengeId: string): Promise<Participant[]> {
+
+  static async getParticipantsByChallengeId(
+    challengeId: string
+  ): Promise<Participant[]> {
     const cid = Number(challengeId);
     if (!Number.isFinite(cid)) return [];
 
-    // Step 1: get attendees rows (avoid relying on FK embedding)
+    // Step 1: get attendees rows with run data
     const { data: attendees, error: attErr } = await supabase
       .from("challenge_attendees")
-      .select("status,start_time,end_time,profile_id")
+      .select(
+        `
+        status,
+        start_time,
+        end_time,
+        profile_id,
+        completion_time,
+        runs!inner(
+          duration_seconds,
+          distance_km,
+          end_time
+        )
+      `
+      )
       .eq("challenge_id", cid);
     if (attErr) throw attErr;
     const rows = (attendees || []) as any[];
@@ -422,8 +446,8 @@ export class ApiService {
       new Set(
         rows
           .map((r) => r.profile_id)
-          .filter((v): v is number => typeof v === "number"),
-      ),
+          .filter((v): v is number => typeof v === "number")
+      )
     );
 
     // Step 2: fetch profiles in bulk by numeric ids
@@ -454,17 +478,34 @@ export class ApiService {
         const email = p?.email || "";
         name = email ? email.split("@")[0] : "User";
       }
+
+      // Extract run data for completed participants
+      const runData = row.runs && row.runs.length > 0 ? row.runs[0] : null;
+      const duration_seconds = runData?.duration_seconds || undefined;
+      const completion_time =
+        runData?.end_time || row.completion_time || undefined;
+
+      console.log("Processing participant:", {
+        name,
+        status: row.status,
+        duration_seconds,
+        completion_time,
+        runData: row.runs,
+      });
+
       return {
         name,
         avatar: p?.avatar_url || null,
         status: row.status,
         time: row.end_time || undefined,
+        duration_seconds,
+        completion_time,
       } as Participant;
     });
   }
 
   static async addParticipant(
-    insert: TablesInsert<"challenge_attendees">,
+    insert: TablesInsert<"challenge_attendees">
   ): Promise<Tables<"challenge_attendees">> {
     const { data, error } = await supabase
       .from("challenge_attendees")
@@ -477,7 +518,7 @@ export class ApiService {
 
   static async updateParticipant(
     id: number,
-    updates: TablesUpdate<"challenge_attendees">,
+    updates: TablesUpdate<"challenge_attendees">
   ): Promise<Tables<"challenge_attendees">> {
     const { data, error } = await supabase
       .from("challenge_attendees")
@@ -516,7 +557,9 @@ export class ApiService {
    * List challenge attendee rows for the current user
    * Returns an array of { challenge_id, status } for hydration
    */
-  static async listCurrentUserAttendees(): Promise<Array<{ challenge_id: number; status: string }>> {
+  static async listCurrentUserAttendees(): Promise<
+    Array<{ challenge_id: number; status: string }>
+  > {
     const profile = await ApiService.getCurrentUserProfile();
     if (!profile?.id) return [];
 
@@ -528,7 +571,10 @@ export class ApiService {
     const rows = (data || []) as any[];
     return rows
       .filter((r) => r?.challenge_id != null)
-      .map((r) => ({ challenge_id: Number(r.challenge_id), status: String(r.status || "joined") }));
+      .map((r) => ({
+        challenge_id: Number(r.challenge_id),
+        status: String(r.status || "joined"),
+      }));
   }
 
   /**
@@ -549,7 +595,7 @@ export class ApiService {
 
   static async joinChallengeAsCurrentUser(
     challengeId: number,
-    stakeAmount: number,
+    stakeAmount: number
   ): Promise<Tables<"challenge_attendees">> {
     const profile = await ApiService.getCurrentUserProfile();
     if (!profile?.id) {
@@ -596,7 +642,7 @@ export class ApiService {
 
   // Runs CRUD
   static async listRunsByChallenge(
-    challengeId: number,
+    challengeId: number
   ): Promise<Tables<"runs">[]> {
     const { data, error } = await supabase
       .from("runs")
@@ -607,7 +653,7 @@ export class ApiService {
   }
 
   static async createRun(
-    insert: TablesInsert<"runs">,
+    insert: TablesInsert<"runs">
   ): Promise<Tables<"runs">> {
     const { data, error } = await supabase
       .from("runs")
@@ -620,7 +666,7 @@ export class ApiService {
 
   static async updateRun(
     id: number,
-    updates: TablesUpdate<"runs">,
+    updates: TablesUpdate<"runs">
   ): Promise<Tables<"runs">> {
     const { data, error } = await supabase
       .from("runs")
@@ -650,7 +696,7 @@ export class ApiService {
 
   static async upsertTrack(
     challengeId: number,
-    polyline: string,
+    polyline: string
   ): Promise<void> {
     // Try update first
     const { error: updateErr } = await supabase
@@ -677,7 +723,7 @@ export class ApiService {
   }
 
   static async getChallengeCreator(
-    challengeId: string,
+    challengeId: string
   ): Promise<{ name: string; avatar: any; time: string } | null> {
     const cid = Number(challengeId);
     if (!Number.isFinite(cid)) return null;

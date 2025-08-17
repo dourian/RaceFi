@@ -1,5 +1,5 @@
 import { RunCalculationService } from "./runCalculationService";
-import { Challenge } from "../constants/types";
+import { Challenge, Participant } from "../constants/types";
 import { UserBalanceService } from "./userBalanceService";
 import { timeManager } from "../helpers/timeManager";
 
@@ -68,7 +68,7 @@ export class ChallengeService {
    * @returns Updated challenge status
    */
   static startChallengeRun(
-    existingStatus: UserChallengeStatus,
+    existingStatus: UserChallengeStatus
   ): UserChallengeStatus {
     return {
       ...existingStatus,
@@ -84,7 +84,7 @@ export class ChallengeService {
    */
   static completeChallengeRun(
     existingStatus: UserChallengeStatus,
-    runData: Omit<ChallengeRunData, "completedAt">,
+    runData: Omit<ChallengeRunData, "completedAt">
   ): UserChallengeStatus {
     const challengeRunData: ChallengeRunData = {
       ...runData,
@@ -106,7 +106,7 @@ export class ChallengeService {
    */
   static createRunData(
     coords: { latitude: number; longitude: number; timestamp: number }[],
-    durationSeconds: number,
+    durationSeconds: number
   ): Omit<ChallengeRunData, "completedAt"> {
     const distance = RunCalculationService.calculateDistance(coords);
     const pace = RunCalculationService.calculatePace(coords);
@@ -125,7 +125,7 @@ export class ChallengeService {
    * @returns Formatted display data
    */
   static formatRunDataForDisplay(
-    runData: ChallengeRunData,
+    runData: ChallengeRunData
   ): ChallengeFormattedData {
     return {
       formattedDuration: RunCalculationService.formatDuration(runData.duration),
@@ -224,7 +224,7 @@ export class ChallengeService {
   static simulateWinner(
     existingStatus: UserChallengeStatus,
     prizePoolAmount: number,
-    challenge: Challenge,
+    challenge: Challenge
   ): UserChallengeStatus {
     if (existingStatus.status !== "completed") {
       throw new Error("Can only make completed challenges into winners");
@@ -239,7 +239,7 @@ export class ChallengeService {
     UserBalanceService.addWinnings(
       challenge.id,
       challenge.name,
-      prizePoolAmount,
+      prizePoolAmount
     );
 
     return {
@@ -259,7 +259,7 @@ export class ChallengeService {
    */
   static createMockRunData(
     challengeId: string,
-    isWinningTime: boolean = true,
+    isWinningTime: boolean = true
   ): Omit<ChallengeRunData, "completedAt"> {
     // Mock coordinates for a short route
     const mockCoords = [
@@ -313,8 +313,8 @@ export class ChallengeService {
       challengeId === "waterfront-5k"
         ? 5000
         : challengeId === "uptown-10k"
-          ? 10000
-          : 5000; // meters
+        ? 10000
+        : 5000; // meters
 
     return {
       coords: mockCoords,
@@ -339,7 +339,7 @@ export class ChallengeService {
    * @returns Updated status with winnings recorded
    */
   static addWinningsToBalance(
-    existingStatus: UserChallengeStatus,
+    existingStatus: UserChallengeStatus
   ): UserChallengeStatus {
     if (existingStatus.status !== "winner") {
       throw new Error("Can only add winnings from winner status");
@@ -387,12 +387,70 @@ export class ChallengeService {
    */
   static isRaceExpiredById(
     challengeId: string,
-    challenges: Challenge[],
+    challenges: Challenge[]
   ): boolean {
     const challenge = challenges.find((c) => c.id === challengeId);
     if (!challenge) {
       throw new Error(`Challenge with id ${challengeId} not found`);
     }
     return this.isRaceExpired(challenge);
+  }
+
+  /**
+   * Calculate the actual winner of a challenge based on participant completion times
+   * @param participants List of challenge participants
+   * @returns Winner information or null if no winner yet
+   */
+  static calculateWinner(participants: Participant[]): {
+    winner: Participant;
+    winningTime: number;
+    allCompletedParticipants: Participant[];
+  } | null {
+    console.log("Calculating winner for participants:", participants);
+    // Filter only completed participants with valid duration data
+    const completedParticipants = participants.filter(
+      (p) => p.status === "completed" && p.duration_seconds != null
+    );
+    console.log("Completed participants with duration:", completedParticipants);
+    if (completedParticipants.length === 0) {
+      console.log("No completed participants found");
+      return null;
+    }
+    // Sort by duration (fastest first)
+    const sortedParticipants = [...completedParticipants].sort(
+      (a, b) =>
+        (a.duration_seconds || Infinity) - (b.duration_seconds || Infinity)
+    );
+    console.log(
+      "Sorted participants by time:",
+      sortedParticipants.map((p) => ({
+        name: p.name,
+        time: p.duration_seconds,
+        status: p.status,
+      }))
+    );
+    const winner = sortedParticipants[0];
+    const winningTime = winner.duration_seconds || 0;
+    console.log("Winner determined:", winner.name, "with time:", winningTime);
+    return {
+      winner,
+      winningTime,
+      allCompletedParticipants: sortedParticipants,
+    };
+  }
+
+  /**
+   * Check if a specific participant is the winner
+   * @param participant The participant to check
+   * @param allParticipants All challenge participants
+   * @returns Whether this participant is the winner
+   */
+  static isParticipantWinner(
+    participant: Participant,
+    allParticipants: Participant[]
+  ): boolean {
+    const winnerInfo = this.calculateWinner(allParticipants);
+    if (!winnerInfo) return false;
+    return participant.duration_seconds === winnerInfo.winningTime;
   }
 }

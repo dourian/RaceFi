@@ -232,6 +232,19 @@ export default function ChallengeDetail() {
   const isInProgress = challengeStatus.status === "in-progress";
   // Creator can join like everyone else; no special disable logic
 
+  // Generate leaderboard data using the service
+  const leaderboardData = challenge 
+    ? LeaderboardService.generateLeaderboard(
+        challenge,
+        challengeStatus,
+      )
+    : {
+        entries: [],
+        totalParticipants: 0,
+        isCompleted: false,
+        message: "Loading...",
+      };
+
   // Calculate actual time remaining using challenge end date and current app time
   const getTimeRemaining = () => {
     if (!challenge) return { timeLeft: 0, isExpired: true, progressValue: 0 };
@@ -272,6 +285,8 @@ export default function ChallengeDetail() {
 
   // Get expiry status and text using same logic as home screen
   const getExpiryInfo = (challenge: any, challengeStatus: any) => {
+    if (!challenge) return { text: "Loading...", color: "#6b7280", urgent: false };
+    
     const now = currentAppTime;
     const endTime = challenge.endDate.getTime();
     const timeDiff = endTime - now;
@@ -921,12 +936,6 @@ export default function ChallengeDetail() {
       </SafeAreaView>
     );
   }
-
-  // Generate leaderboard data using the service
-  const leaderboardData = LeaderboardService.generateLeaderboard(
-    challenge,
-    challengeStatus,
-  );
 
   return (
     <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>

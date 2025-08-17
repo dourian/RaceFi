@@ -62,6 +62,7 @@ export default function RecordRun() {
   const [staticPolyline, setStaticPolyline] = useState<
     { latitude: number; longitude: number }[] | null
   >(null);
+  const [challenge, setChallenge] = useState<any>(null);
   const mapTranslateY = useRef(new Animated.Value(0)).current;
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -91,6 +92,24 @@ export default function RecordRun() {
     };
 
     fetchTrackPolyline();
+  }, [challengeId, isChallenge]);
+
+  // Fetch challenge data when challengeId is available
+  useEffect(() => {
+    const fetchChallengeData = async () => {
+      if (challengeId && isChallenge) {
+        try {
+          const challengeData = await ApiService.getChallengeById(challengeId);
+          if (challengeData) {
+            setChallenge(challengeData);
+            console.log("Challenge data loaded:", challengeData.name);
+          }
+        } catch (error) {
+          console.error("Error fetching challenge data:", error);
+        }
+      }
+    };
+    fetchChallengeData();
   }, [challengeId, isChallenge]);
 
   // Store location updates in coords when location changes
@@ -412,6 +431,7 @@ export default function RecordRun() {
           onReset={handleResetRun}
           challengeId={challengeId}
           maxSpeedKmh={completedRunData.maxSpeedKmh}
+          challenge={challenge}
         />
       )}
     </SafeAreaView>
