@@ -11,3 +11,4 @@ stravalib
 googlemaps
 trimesh
 supabase>=2.0.0
+PyYAML>=6.0

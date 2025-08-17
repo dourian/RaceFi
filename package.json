@@ -4,3 +4,30 @@
     "expo-linking": "^7.1.7"
   }
 }
+
+{
+  "name": "racefi",
+  "version": "1.0.0",
+  "description": "- running challenge app\r - users upload their runs from strava, and then it creates a \"challenge\"\r - a \"challenge\" is like a race in f1\r - then, other users can click to participate in the race\r - to participate, they need to stake a bit of crypto\r - the winner of the race will get all of the money in the pot",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dourian/RaceFi.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/dourian/RaceFi/issues"
+  },
+  "homepage": "https://github.com/dourian/RaceFi#readme",
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.4.0"
+  },
+  "devDependencies": {
+    "hardhat": "^3.0.0"
+  }
+}
