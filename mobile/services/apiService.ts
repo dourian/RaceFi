@@ -129,7 +129,8 @@ export class ApiService {
       const creator = row.created_by_profile_id
         ? creatorsMap.get(String(row.created_by_profile_id)) || null
         : null;
-      const participants = attendeeCounts.get(row.id) ?? 0;
+      const baseCount = attendeeCounts.get(row.id) ?? 0;
+      const participants = baseCount + (row.created_by_profile_id != null ? 1 : 0);
       return ApiService.mapRowToChallenge(row, polyline, creator, participants);
     });
   }

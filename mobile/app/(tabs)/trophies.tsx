@@ -63,6 +63,7 @@ export default function TrophiesScreen() {
     >
       <ScrollView
         style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}
@@ -309,6 +310,9 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: spacing.xl * 4, // ensure content clears the floating tab bar
   },
   header: {
     padding: spacing.xl,
