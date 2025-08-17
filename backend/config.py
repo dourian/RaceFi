@@ -8,15 +8,15 @@ class Settings:
     # Supabase Configuration
     SUPABASE_URL: str = os.getenv("SUPABASE_URL", "")
     SUPABASE_SERVICE_ROLE_KEY: str = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
-    
+
     # Server Configuration
     HOST: str = os.getenv("HOST", "127.0.0.1")
     PORT: int = int(os.getenv("PORT", "8001"))
-    
+
     # API Configuration
     API_V1_STR: str = "/api/v1"
     PROJECT_NAME: str = "RaceFi API"
-    
+
     # Validation
     def validate(self):
         # For development, allow placeholder values
@@ -35,4 +35,4 @@ try:
     settings.validate()
 except ValueError as e:
     print(f"Configuration Error: {e}")
-    print("Please check your .env file and ensure all required variables are set.") 
+    print("Please check your .env file and ensure all required variables are set.")
