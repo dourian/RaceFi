@@ -20,7 +20,6 @@ class ChallengeBase(BaseModel):
     stake: float = Field(..., gt=0)
     elevation: int = Field(..., ge=0)
     difficulty: str = Field(..., pattern="^(Easy|Moderate|Hard)$")
-    prize_pool: float = Field(..., gt=0)
     max_participants: int = Field(..., gt=0, le=1000)
     location: str = Field(..., min_length=1, max_length=255)
     start_date: str
@@ -38,8 +37,6 @@ class ChallengeUpdate(BaseModel):
     stake: Optional[float] = Field(None, gt=0)
     elevation: Optional[int] = Field(None, ge=0)
     difficulty: Optional[str] = Field(None, pattern="^(Easy|Moderate|Hard)$")
-    prize_pool: Optional[float] = Field(None, gt=0)
-    participants_count: Optional[int] = Field(None, ge=0)
     max_participants: Optional[int] = Field(None, gt=0, le=1000)
     location: Optional[str] = Field(None, min_length=1, max_length=255)
     start_date: Optional[str] = None
@@ -48,7 +45,6 @@ class ChallengeUpdate(BaseModel):
 
 class ChallengeResponse(ChallengeBase):
     id: int
-    participants_count: int
     is_active: bool
     created_at: Optional[Union[datetime, str]] = None
     updated_at: Optional[Union[datetime, str]] = None
@@ -90,7 +86,6 @@ async def create_challenge(challenge: ChallengeCreate):
         validate_challenge_dates(challenge.start_date, challenge.end_date)
         
         challenge_data = challenge.dict(exclude={'polyline'})
-        challenge_data['participants_count'] = 0
         
         # Insert challenge
         result = supabase.table('challenges').insert(challenge_data).execute()

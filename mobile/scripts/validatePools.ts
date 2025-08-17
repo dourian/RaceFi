@@ -3,7 +3,7 @@
  * Run with: npx ts-node scripts/validatePools.ts
  */
 
-import { challenges } from '../constants/mockChallenges';
+import { challenges } from '../mock/mockChallenges';
 import { analyzeAllPools, formatValidationReport } from '../utils/poolValidation';
 
 function main() {

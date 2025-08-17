@@ -26,7 +26,6 @@ export default function CreateChallengeScreen() {
     stake: "",
     elevation: "",
     difficulty: "Easy" as "Easy" | "Moderate" | "Hard",
-    prize_pool: "",
     max_participants: "",
     location: "",
     start_date: new Date(),
@@ -92,8 +91,6 @@ export default function CreateChallengeScreen() {
       !isNaN(parseFloat(formData.stake)) &&
       formData.elevation &&
       !isNaN(parseInt(formData.elevation)) &&
-      formData.prize_pool &&
-      !isNaN(parseFloat(formData.prize_pool)) &&
       formData.max_participants &&
       !isNaN(parseInt(formData.max_participants)) &&
       formData.location.trim() &&
@@ -118,10 +115,6 @@ export default function CreateChallengeScreen() {
     }
     if (!formData.elevation || isNaN(parseInt(formData.elevation))) {
       Alert.alert("Error", "Valid elevation is required");
-      return false;
-    }
-    if (!formData.prize_pool || isNaN(parseFloat(formData.prize_pool))) {
-      Alert.alert("Error", "Valid prize pool is required");
       return false;
     }
     if (
@@ -158,7 +151,6 @@ export default function CreateChallengeScreen() {
         stake: parseFloat(formData.stake),
         elevation: parseInt(formData.elevation),
         difficulty: formData.difficulty,
-        prize_pool: parseFloat(formData.prize_pool),
         max_participants: parseInt(formData.max_participants),
         location: formData.location.trim(),
         start_date: formData.start_date.toISOString(),
@@ -361,31 +353,18 @@ export default function CreateChallengeScreen() {
                 </View>
 
                 <View style={[styles.fieldGroup, styles.halfWidth]}>
-                  <Text style={styles.label}>Prize Pool ($) *</Text>
+                  <Text style={styles.label}>Max Participants *</Text>
                   <TextInput
                     style={styles.input}
-                    value={formData.prize_pool}
-                    onChangeText={(value) => updateField("prize_pool", value)}
-                    placeholder="100.00"
+                    value={formData.max_participants}
+                    onChangeText={(value) => updateField("max_participants", value)}
+                    placeholder="20"
                     placeholderTextColor={colors.textMuted}
-                    keyboardType="decimal-pad"
+                    keyboardType="number-pad"
                   />
                 </View>
               </View>
 
-              <View style={styles.fieldGroup}>
-                <Text style={styles.label}>Max Participants *</Text>
-                <TextInput
-                  style={styles.input}
-                  value={formData.max_participants}
-                  onChangeText={(value) =>
-                    updateField("max_participants", value)
-                  }
-                  placeholder="20"
-                  placeholderTextColor={colors.textMuted}
-                  keyboardType="number-pad"
-                />
-              </View>
 
               <View style={styles.fieldGroup}>
                 <Text style={styles.label}>Location *</Text>

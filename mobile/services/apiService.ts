@@ -18,6 +18,9 @@ export class ApiService {
   private static mapRowToChallenge(
     row: Tables<"challenges">,
     polyline?: string | null,
+    creator?: { name: string; avatar: string | null; time?: string } | null,
+    participantsCountOverride?: number,
+    participantsListOverride?: Participant[],
   ): Challenge {
     const startDate = row.start_date ? new Date(row.start_date) : new Date();
     const endDate = row.end_date ? new Date(row.end_date) : new Date();
@@ -26,6 +29,8 @@ export class ApiService {
       1,
       Math.round(windowMs / (1000 * 60 * 60 * 24)),
     );
+
+    const derivedParticipants = (participantsCountOverride ?? 0) + 1;
 
     return {
       id: String(row.id),
@@ -36,18 +41,18 @@ export class ApiService {
       stake: row.stake,
       elevation: row.elevation,
       difficulty: row.difficulty as Challenge["difficulty"],
-      prizePool: row.prize_pool,
-      participants: row.participants_count ?? 0,
+      prizePool: derivedParticipants * (row.stake ?? 0),
+      participants: derivedParticipants,
       maxParticipants: row.max_participants,
       location: row.location,
       startDate,
       endDate,
       creator: {
-        name: "Challenge Creator",
-        avatar: null,
-        time: "N/A",
+        name: creator?.name || "Challenge Creator",
+        avatar: creator?.avatar ?? null,
+        time: creator?.time || "N/A",
       },
-      participantsList: [],
+      participantsList: participantsListOverride ?? [],
       polyline: polyline || undefined,
     };
   }
@@ -62,9 +67,69 @@ export class ApiService {
       .select("challenge_id, polyline");
     if (tracksError) throw tracksError;
 
+    // Fetch creators in bulk
+    const creatorIds = Array.from(
+      new Set(
+        (data || [])
+          .map((row) => row.created_by_profile_id)
+          .filter((v): v is number => Number.isFinite(v as any)),
+      ),
+    );
+
+    let creatorsMap = new Map<
+      number,
+      { name: string; avatar: string | null }
+    >();
+    if (creatorIds.length) {
+      const { data: creators, error: creatorsErr } = await supabase
+        .from("profiles")
+        .select("id,first_name,last_name,avatar_url")
+        .in("id", creatorIds);
+      if (creatorsErr) throw creatorsErr;
+      creatorsMap = new Map(
+        (creators || []).map((p: any) => {
+          const first = p?.first_name || "";
+          const last = p?.last_name || "";
+          const name = `${first} ${last}`.trim() || "Challenge Creator";
+          return [
+            p.id as number,
+            { name, avatar: (p?.avatar_url as string) || null },
+          ];
+        }),
+      );
+    }
+
+    // Derive participants count from challenge_attendees per challenge
+    const challengeIds = Array.from(
+      new Set(
+        (data || [])
+          .map((r) => r.id)
+          .filter((v): v is number => Number.isFinite(v as any)),
+      ),
+    );
+    let attendeeCounts = new Map<number, number>();
+    if (challengeIds.length) {
+      const { data: attendeeRows, error: attErr } = await supabase
+        .from("challenge_attendees")
+        .select("challenge_id")
+        .in("challenge_id", challengeIds);
+      if (attErr) throw attErr;
+      attendeeCounts = new Map<number, number>();
+      (attendeeRows || []).forEach((r: any) => {
+        const cid = r?.challenge_id as number | null;
+        if (typeof cid === "number") {
+          attendeeCounts.set(cid, (attendeeCounts.get(cid) || 0) + 1);
+        }
+      });
+    }
+
     return (data || []).map((row) => {
       const polyline = tracks?.find((t) => t.challenge_id === row.id)?.polyline;
-      return ApiService.mapRowToChallenge(row, polyline);
+      const creator = row.created_by_profile_id
+        ? creatorsMap.get(row.created_by_profile_id) || null
+        : null;
+      const participants = attendeeCounts.get(row.id) ?? 0;
+      return ApiService.mapRowToChallenge(row, polyline, creator, participants);
     });
   }
 
@@ -92,7 +157,43 @@ export class ApiService {
       .maybeSingle();
     if (trackError) throw trackError;
 
-    return ApiService.mapRowToChallenge(data, (track as any)?.polyline);
+    // Fetch creator profile if available
+    let creator: { name: string; avatar: string | null } | null = null;
+    if (data.created_by_profile_id) {
+      const { data: prof, error: pErr } = await supabase
+        .from("profiles")
+        .select("first_name,last_name,avatar_url")
+        .eq("id", data.created_by_profile_id)
+        .maybeSingle();
+      if (pErr) throw pErr;
+      if (prof) {
+        const first = (prof as any)?.first_name || "";
+        const last = (prof as any)?.last_name || "";
+        const name = `${first} ${last}`.trim() || "Challenge Creator";
+        creator = {
+          name,
+          avatar: ((prof as any)?.avatar_url as string) || null,
+        };
+      }
+    }
+
+    // Derive participants count via a head count query
+    const { count: attendeesCount, error: cntErr } = await supabase
+      .from("challenge_attendees")
+      .select("id", { count: "exact", head: true })
+      .eq("challenge_id", data.id);
+    if (cntErr) throw cntErr;
+
+    // Fetch attendee participants list for detailed view
+    const participantsList = await ApiService.getParticipants(String(data.id));
+
+    return ApiService.mapRowToChallenge(
+      data,
+      (track as any)?.polyline,
+      creator,
+      attendeesCount ?? 0,
+      participantsList,
+    );
   }
 
   static async createChallenge(
@@ -109,7 +210,6 @@ export class ApiService {
     const { polyline, ...challengeFields } = challengeData;
     const challengeInsert: TablesInsert<"challenges"> = {
       ...challengeFields,
-      participants_count: challengeFields.participants_count ?? 0,
     } as TablesInsert<"challenges">;
 
     // Insert challenge
@@ -172,28 +272,56 @@ export class ApiService {
     const cid = Number(challengeId);
     if (!Number.isFinite(cid)) return [];
 
-    const { data, error } = await supabase
+    // Step 1: get attendees rows (avoid relying on FK embedding)
+    const { data: attendees, error: attErr } = await supabase
       .from("challenge_attendees")
-      .select(
-        "status,start_time,end_time,profiles:first_name,profiles:last_name,profiles:avatar_url,profiles:id",
-      )
+      .select("status,start_time,end_time,profile_id")
       .eq("challenge_id", cid);
+    if (attErr) throw attErr;
+    const rows = (attendees || []) as Array<{
+      status: Participant["status"];
+      start_time: string | null;
+      end_time: string | null;
+      profile_id: number | null;
+    }>;
+    if (!rows.length) return [];
 
-    if (error) throw error;
+    // Collect unique profile ids
+    const ids = Array.from(
+      new Set(
+        rows
+          .map((r) => r.profile_id)
+          .filter((v): v is number => Number.isFinite(v as any)),
+      ),
+    );
 
-    // PostgREST flattens when using column renames inconsistently across versions.
-    // To be robust, we read any embedded "profiles" object if present, else flat fields.
-    return (data as any[]).map((row: any) => {
-      const p = row.profiles || row;
-      const first = p.first_name || "";
-      const last = p.last_name || "";
+    // Step 2: fetch profiles in bulk
+    const { data: profs, error: pErr } = await supabase
+      .from("profiles")
+      .select("id,first_name,last_name,avatar_url")
+      .in("id", ids);
+    if (pErr) throw pErr;
+    const pMap = new Map<
+      number,
+      {
+        id: number;
+        first_name: string | null;
+        last_name: string | null;
+        avatar_url: string | null;
+      }
+    >();
+    (profs || []).forEach((p: any) => pMap.set(p.id, p));
+
+    // Merge
+    return rows.map((row) => {
+      const p = row.profile_id != null ? pMap.get(row.profile_id) : undefined;
+      const first = p?.first_name || "";
+      const last = p?.last_name || "";
       const name = `${first} ${last}`.trim() || "Participant";
-      const status = row.status as any as Participant["status"]; // already matches enum
       return {
         name,
-        avatar: p.avatar_url || null,
-        status,
-        // Optionally surface a human time label if end_time exists
+        avatar: p?.avatar_url || null,
+        status: row.status,
         time: row.end_time || undefined,
       } as Participant;
     });

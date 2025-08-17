@@ -7,9 +7,9 @@ export function Card({
   style,
 }: {
   children: ReactNode;
-  style?: ViewStyle;
+  style?: ViewStyle | ViewStyle[];
 }) {
-  return <View style={[styles.card, style]}>{children}</View>;
+  return <View style={[styles.card, style as any]}>{children}</View>;
 }
 
 export function CardHeader({
@@ -40,12 +40,40 @@ export function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
+import { resolveImageSource } from "../helpers/assetResolver";
+
 export function Avatar({ source, size = 32 }: { source: any; size?: number }) {
+  // Normalize source: allow local asset path strings, URL strings, or ImageSource objects
+  let normalized: any = null;
+  if (typeof source === "string") {
+    // Try local asset resolver first
+    normalized = resolveImageSource(source);
+    // If not a known local asset and looks like a URL, convert to { uri }
+    if (!normalized && /^(https?:)?\/\//i.test(source)) {
+      normalized = { uri: source };
+    }
+  } else {
+    normalized = source;
+  }
+
+  if (!normalized) {
+    // Fallback placeholder circle when no image
+    return (
+      <View
+        style={{
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          backgroundColor: colors.background,
+        }}
+      ></View>
+    );
+  }
   return (
     <Image
-      source={source}
+      source={normalized}
       style={{ width: size, height: size, borderRadius: size / 2 }}
-    />
+    ></Image>
   );
 }
 

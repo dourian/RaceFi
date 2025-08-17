@@ -91,8 +91,6 @@ export type Database = {
           location: string;
           max_participants: number;
           name: string;
-          participants_count: number | null;
-          prize_pool: number;
           stake: number;
           start_date: string;
           updated_at: string | null;
@@ -110,8 +108,6 @@ export type Database = {
           location: string;
           max_participants: number;
           name: string;
-          participants_count?: number | null;
-          prize_pool: number;
           stake: number;
           start_date: string;
           updated_at?: string | null;
@@ -129,8 +125,6 @@ export type Database = {
           location?: string;
           max_participants?: number;
           name?: string;
-          participants_count?: number | null;
-          prize_pool?: number;
           stake?: number;
           start_date?: string;
           updated_at?: string | null;

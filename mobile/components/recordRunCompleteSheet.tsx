@@ -11,6 +11,7 @@ import {
 import { colors, spacing, typography, shadows } from "../app/theme";
 import { API_URL } from "../app/config";
 import { decodePolyline, haversineMeters } from "../helpers/polyline";
+import polyline from "@mapbox/polyline";
 import mockChallenges from "../mock/mockChallenges";
 import { ApiService } from "../services/apiService";
 import { ChallengeService } from "../services/challengeService";

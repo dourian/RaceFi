@@ -1,4 +1,4 @@
-import { Participant } from './types';
+import { Participant } from "../constants/types";
 
 export const mockParticipants: Record<string, Participant[]> = {
   'waterfront-5k': [
