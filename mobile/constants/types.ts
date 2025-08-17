@@ -11,7 +11,7 @@ export type Challenge = {
   description: string;
   distanceKm: number;
   windowDays: number;
-  stake: number; // USDC
+  stake: number; // ETH
   elevation: number;
   difficulty: "Easy" | "Moderate" | "Hard";
   prizePool: number;

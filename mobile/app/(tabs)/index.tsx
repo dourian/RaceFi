@@ -459,11 +459,11 @@ export default function BrowseScreen() {
                         <View style={styles.prizeInfo}>
                           <Ionicons name="trophy" size={16} color="#f59e0b" />
                           <Text style={styles.prizeText}>
-                            {item.prizePool} USDC Prize Pool
+                            {item.prizePool} ETH Prize Pool
                           </Text>
                         </View>
                         <Text style={styles.stake}>
-                          {item.stake} USDC to join
+                          {item.stake} ETH to join
                         </Text>
                       </View>
                     </View>

@@ -83,7 +83,7 @@ export default function TrophiesScreen() {
               <View style={styles.statDivider} />
               <View style={styles.statItem}>
                 <Text style={styles.statValue}>{totalPrizesMoney}</Text>
-                <Text style={styles.statLabel}>USDC Won</Text>
+                <Text style={styles.statLabel}>ETH Won</Text>
               </View>
               <View style={styles.statDivider} />
               <View style={styles.statItem}>
@@ -217,7 +217,7 @@ export default function TrophiesScreen() {
               <View style={styles.achievementInfo}>
                 <Text style={styles.achievementTitle}>Prize Hunter</Text>
                 <Text style={styles.achievementDescription}>
-                  Earn 100+ USDC ({totalPrizesMoney}/100)
+                  Earn 100+ ETH ({totalPrizesMoney}/100)
                 </Text>
               </View>
               {totalPrizesMoney >= 100 && (
@@ -279,7 +279,7 @@ const TrophyBadge: React.FC<{
             {/* Prize Amount */}
             <View style={styles.prizeContainer}>
               <Text style={styles.prizeAmount}>
-                {challengeStatus.winnerRewards} USDC
+                {challengeStatus.winnerRewards} ETH
               </Text>
             </View>
 

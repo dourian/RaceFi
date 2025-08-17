@@ -965,7 +965,7 @@ export default function ChallengeDetail() {
                 <Stat label="Elevation" value={`${challenge.elevation}m`} />
                 <Stat
                   label="Prize Pool"
-                  value={`${challenge.prizePool} USDC`}
+                  value={`${challenge.prizePool} ETH`}
                 />
               </View>
             </CardContent>
@@ -1016,7 +1016,7 @@ export default function ChallengeDetail() {
                   </Text>
                   <View style={styles.expiredStakeInfo}>
                     <Text style={styles.expiredStakeAmount}>
-                      {challenge.stake} USDC
+                      {challenge.stake} ETH
                     </Text>
                     <Text style={styles.expiredStakeLabel}>
                       Entry fee (no longer available)
@@ -1033,7 +1033,7 @@ export default function ChallengeDetail() {
                 <CardContent>
                   <View style={styles.stakeInfo}>
                     <Text style={styles.stakeAmount}>
-                      {challenge.stake} USDC
+                      {challenge.stake} ETH
                     </Text>
                     <Text style={styles.stakeLabel}>Stake to join</Text>
                   </View>
@@ -1125,7 +1125,7 @@ export default function ChallengeDetail() {
                       </Pressable>
                     </Link>
                   )}
-                  {lastJoinInfo?.to && lastJoinInfo?.valueWei && (
+                  {!isInProgress && !hasOnchainJoined && lastJoinInfo?.to && lastJoinInfo?.valueWei && (
                     <View style={styles.copyRowContainer}>
                       <View style={styles.copyRow}>
                         <Text style={styles.copyLabel}>Send to</Text>
@@ -1168,7 +1168,7 @@ export default function ChallengeDetail() {
               />
               <CardContent>
                 <Text style={styles.cashedOutText}>
-                  ✅ Your {challengeStatus.winnerRewards} USDC winnings have
+                  ✅ Your {challengeStatus.winnerRewards} ETH winnings have
                   been added to your balance!
                 </Text>
                 {challengeStatus.runData && (
@@ -1218,8 +1218,8 @@ export default function ChallengeDetail() {
               />
               <CardContent>
                 <Text style={styles.winnerText}>
-                  🎉 Congratulations! You won this challenge and earned{" "}
-                  {challengeStatus.winnerRewards} USDC!
+                  🎉 Congratulations! You won this challenge and earned "
+                  {challengeStatus.winnerRewards} ETH!
                 </Text>
                 {challengeStatus.runData && (
                   <View style={styles.resultStats}>
@@ -1248,7 +1248,7 @@ export default function ChallengeDetail() {
                   </View>
                 )}
                 <Text style={styles.winnerNote}>
-                  Your {challengeStatus.winnerRewards} USDC has been
+                  Your {challengeStatus.winnerRewards} ETH has been
                   automatically added to your wallet balance! Visit your profile
                   to cash out all your earnings. 🎊
                 </Text>
@@ -1545,7 +1545,7 @@ export default function ChallengeDetail() {
                         {showPrize && (
                           <View style={styles.prizeIndicator}>
                             <Text style={styles.prizeText}>
-                              {entry.prizeAmount} USDC
+                              {entry.prizeAmount} ETH
                             </Text>
                           </View>
                         )}

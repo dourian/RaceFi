@@ -110,6 +110,83 @@ app.get("/health", (_req, res) => {
   res.json({ ok: true });
 });
 
+// Simple payout readiness
+app.get("/payout/status", (_req, res) => {
+  try {
+    res.json({
+      hasRpc: !!RPC_URL,
+      hasWalletClient: !!walletClient,
+      hasOperator: !!operatorAccount,
+      operator: operatorAccount?.address || null,
+      rpcUrl: RPC_URL || null,
+    });
+  } catch (e) {
+    res.status(500).json({ error: "server_error" });
+  }
+});
+
+// Send 0.002 ETH from operator key to the provided address (testnet win tip)
+// POST /payout/win { to }
+app.post("/payout/win", async (req, res) => {
+  try {
+    if (!walletClient || !operatorAccount) {
+      return res.status(500).json({
+        error: "operator_unavailable",
+        detail: { hasWalletClient: !!walletClient, hasOperator: !!operatorAccount },
+      });
+    }
+    const { to } = req.body || {};
+    if (!to || !isAddress(to)) return res.status(400).json({ error: "invalid_to" });
+
+    const value = parseEther("0.002");
+    try {
+      let chainId = null;
+      let operatorBalance = null;
+      try {
+        if (publicClient) chainId = await publicClient.getChainId();
+      } catch {}
+      try {
+        if (publicClient && operatorAccount?.address) {
+          operatorBalance = (await publicClient.getBalance({ address: operatorAccount.address })).toString();
+        }
+      } catch {}
+
+      const hash = await walletClient.sendTransaction({
+        to: getAddress(to),
+        value,
+        account: operatorAccount,
+      });
+      return res.json({ ok: true, txHash: hash, to: getAddress(to), valueWei: value.toString(), chainId, operator: operatorAccount.address, operatorBalance });
+    } catch (e) {
+      const err = e || {};
+      return res.status(500).json({ ok: false, error: "send_failed", detail: String(err?.shortMessage || err?.message || err), stack: (err?.stack || undefined) });
+    }
+  } catch (e) {
+    console.error("win payout error", e);
+    return res.status(500).json({ error: "server_error" });
+  }
+});
+
+// Payout diagnostics: chain, operator balance
+app.get("/payout/diag", async (_req, res) => {
+  try {
+    let chainId = null;
+    let operator = operatorAccount?.address || null;
+    let operatorBalance = null;
+    try {
+      if (publicClient) chainId = await publicClient.getChainId();
+    } catch {}
+    try {
+      if (publicClient && operator) {
+        operatorBalance = (await publicClient.getBalance({ address: operator })).toString();
+      }
+    } catch {}
+    return res.json({ hasRpc: !!RPC_URL, rpcUrl: RPC_URL || null, hasWalletClient: !!walletClient, operator, chainId, operatorBalance });
+  } catch (e) {
+    return res.status(500).json({ error: "server_error" });
+  }
+});
+
 // Debug: surface escrow runtime status safely (no secrets)
 app.get("/debug/escrow-status", (_req, res) => {
   try {

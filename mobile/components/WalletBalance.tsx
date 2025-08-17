@@ -29,7 +29,7 @@ const WalletBalance: React.FC<WalletBalanceProps> = ({ style }) => {
 
     Alert.alert(
       "Cash Out All Winnings",
-      `Are you sure you want to cash out ${balance.totalBalance.toFixed(2)} USDC to your wallet?`,
+      `Are you sure you want to cash out ${balance.totalBalance.toFixed(6)} ETH to your wallet?`,
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -40,7 +40,7 @@ const WalletBalance: React.FC<WalletBalanceProps> = ({ style }) => {
               cashOutBalance();
               Alert.alert(
                 "Cash Out Successful!",
-                `${balance.totalBalance.toFixed(2)} USDC has been sent to your wallet. It may take a few minutes to appear.`,
+                `${balance.totalBalance.toFixed(6)} ETH has been sent to your wallet. It may take a few minutes to appear.`,
                 [{ text: "OK" }],
               );
             } catch (error) {
@@ -54,7 +54,7 @@ const WalletBalance: React.FC<WalletBalanceProps> = ({ style }) => {
     );
   };
 
-  const formatUSDC = (amount: number) => `${amount.toFixed(2)} USDC`;
+  const formatETH = (amount: number) => `${amount.toFixed(6)} ETH`;
 
   return (
     <Card style={[styles.walletCard, style]}>
@@ -74,7 +74,7 @@ const WalletBalance: React.FC<WalletBalanceProps> = ({ style }) => {
             <View style={styles.balanceContent}>
               <Text style={styles.balanceLabel}>Available Balance</Text>
               <Text style={styles.balanceAmount}>
-                {formatUSDC(balance.totalBalance)}
+                {formatETH(balance.totalBalance)}
               </Text>
               {hasBalance() && (
                 <Pressable
@@ -106,7 +106,7 @@ const WalletBalance: React.FC<WalletBalanceProps> = ({ style }) => {
             onPress={() => router.push("/onramp")}
           >
             <Ionicons name="card" size={16} color="white" />
-            <Text style={styles.buyButtonText}>Buy USDC</Text>
+            <Text style={styles.buyButtonText}>Buy ETH</Text>
           </Pressable>
         </View>
 
@@ -114,14 +114,14 @@ const WalletBalance: React.FC<WalletBalanceProps> = ({ style }) => {
         <View style={styles.statsContainer}>
           <View style={styles.statItem}>
             <Text style={styles.statValue}>
-              {formatUSDC(balance.totalEarned)}
+              {formatETH(balance.totalEarned)}
             </Text>
             <Text style={styles.statLabel}>Total Earned</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
             <Text style={styles.statValue}>
-              {formatUSDC(balance.totalCashedOut)}
+              {formatETH(balance.totalCashedOut)}
             </Text>
             <Text style={styles.statLabel}>Total Cashed Out</Text>
           </View>
@@ -163,7 +163,7 @@ const WalletBalance: React.FC<WalletBalanceProps> = ({ style }) => {
                     ]}
                   >
                     {transaction.type === "win" ? "+" : "-"}
-                    {formatUSDC(transaction.amount)}
+                    {formatETH(transaction.amount)}
                   </Text>
                 </View>
               ))}
@@ -180,7 +180,7 @@ const WalletBalance: React.FC<WalletBalanceProps> = ({ style }) => {
             />
             <Text style={styles.emptyTitle}>No Winnings Yet</Text>
             <Text style={styles.emptyDescription}>
-              Win challenges to start earning USDC rewards!
+              Win challenges to start earning ETH rewards!
             </Text>
           </View>
         )}

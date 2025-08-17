@@ -13,9 +13,13 @@ import { colors, shadows, spacing, typography } from "../../app/theme";
 import WalletBalance from "../WalletBalance";
 import TokenBalances from "./TokenBalances";
 import WalletAddressInput from "../WalletAddressInput";
+import * as Linking from "expo-linking";
+import { getStoredWalletAddress } from "../../helpers/walletStorage";
+import { useBalance } from "../../contexts/balanceContext";
 
 const Profile: React.FC = () => {
   const { user, signOut } = useAuth();
+  const { hasBalance } = useBalance();
 
   const handleSignOut = async () => {
     Alert.alert("Sign Out", "Are you sure you want to sign out?", [
@@ -33,6 +37,37 @@ const Profile: React.FC = () => {
     ]);
   };
 
+  const [claiming, setClaiming] = React.useState(false);
+
+  async function handleClaimTestnet() {
+    try {
+      setClaiming(true);
+      const addr = (await getStoredWalletAddress())?.trim();
+      if (!addr) {
+        Alert.alert(
+          "No wallet",
+          "Add a wallet address above to receive the tip.",
+        );
+        return;
+      }
+      const { PayoutService } = await import("../../services/payoutService");
+      const resp = await PayoutService.win(addr);
+      if (!resp.ok) {
+        Alert.alert("Claim failed", resp.error || "Unknown error");
+        return;
+      }
+      const hash = resp.txHash as string | undefined;
+      Alert.alert("Submitted", hash ? `Tx: ${hash}` : "Transaction submitted");
+      if (hash) {
+        try {
+await Linking.openURL(`https://sepolia.basescan.org/tx/${hash}`);
+        } catch {}
+      }
+    } finally {
+      setClaiming(false);
+    }
+  }
+
   return (
     <SafeAreaView
       style={styles.container}
@@ -45,11 +80,26 @@ const Profile: React.FC = () => {
           <View>
             <View style={styles.header}>
               <Text style={styles.headerTitle}>Profile</Text>
-              <Text style={styles.subtitle}>Manage your account and earnings</Text>
+              <Text style={styles.subtitle}>
+                Manage your account and earnings
+              </Text>
             </View>
 
             {/* Wallet Balance */}
             <WalletBalance style={styles.walletBalance} />
+
+            {/* Cash out (testnet) */}
+            {hasBalance() && (
+              <TouchableOpacity
+                style={[styles.claimBtn, claiming && { opacity: 0.7 }]}
+                onPress={handleClaimTestnet}
+                disabled={claiming}
+              >
+                <Text style={styles.claimBtnText}>
+                  {claiming ? "Processing…" : "Cash Out"}
+                </Text>
+              </TouchableOpacity>
+            )}
 
             {/* Token Balances (CDP) */}
             <TokenBalances />
@@ -57,7 +107,9 @@ const Profile: React.FC = () => {
             {/* Wallet address (local) */}
             <View style={styles.userInfo}>
               <Text style={styles.sectionTitle}>Wallet</Text>
-              <Text style={styles.sectionSubtitle}>Used for staking and verification</Text>
+              <Text style={styles.sectionSubtitle}>
+                Used for staking and verification
+              </Text>
               <WalletAddressInput />
             </View>
 
@@ -78,7 +130,10 @@ const Profile: React.FC = () => {
             </View>
 
             {/* Sign Out */}
-            <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
+            <TouchableOpacity
+              style={styles.signOutButton}
+              onPress={handleSignOut}
+            >
               <Text style={styles.signOutText}>Sign Out</Text>
             </TouchableOpacity>
 
@@ -104,6 +159,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: spacing.xxl * 4,
+    paddingHorizontal: spacing.lg,
   },
   header: {
     marginBottom: spacing.xl,
@@ -393,6 +449,23 @@ const styles = StyleSheet.create({
   },
   bottomPadding: {
     height: spacing.xl,
+  },
+  claimBtn: {
+    marginTop: spacing.sm,
+    marginHorizontal: spacing.lg,
+    backgroundColor: "#111827",
+    paddingVertical: spacing.md,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  claimBtnText: {
+    color: "white",
+    fontWeight: "700",
+  },
+  claimNote: {
+    ...typography.meta,
+    color: colors.textMuted,
+    marginTop: spacing.xs,
   },
 });
 

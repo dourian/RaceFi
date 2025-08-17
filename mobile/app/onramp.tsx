@@ -119,13 +119,13 @@ export default function OnrampScreen() {
     <View style={styles.container}>
       <Stack.Screen
         options={{
-          title: "Buy USDC",
+          title: "Buy ETH",
           headerStyle: { backgroundColor: COINBASE_BLUE },
           headerTintColor: "white",
           headerTitleStyle: { color: "white" },
         }}
       />
-      <Text style={styles.title}>Buy USDC</Text>
+      <Text style={styles.title}>Buy ETH</Text>
       <View style={styles.card}>
         <Text style={styles.label}>Destination address</Text>
         <TextInput

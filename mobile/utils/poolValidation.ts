@@ -1,5 +1,5 @@
 /**
- * USDC Prize Pool Validation Utility
+ * ETH Prize Pool Validation Utility
  * Validates that prize pools are correctly calculated based on stakes and participants
  */
 
@@ -46,11 +46,11 @@ export function validateChallengePool(
   if (!isValid) {
     if (discrepancy > 0) {
       validationNotes.push(
-        `Prize pool is ${discrepancy} USDC higher than expected`,
+        `Prize pool is ${discrepancy} ETH higher than expected`,
       );
     } else {
       validationNotes.push(
-        `Prize pool is ${Math.abs(discrepancy)} USDC lower than expected`,
+        `Prize pool is ${Math.abs(discrepancy)} ETH lower than expected`,
       );
     }
   }
@@ -112,10 +112,10 @@ export function analyzeAllPools(challenges: Challenge[]): PoolAnalysis {
     `Analyzed ${challenges.length} challenges`,
     `${validChallenges} challenges have correct prize pool calculations`,
     `${invalidChallenges} challenges have incorrect prize pool calculations`,
-    `Total stake amount across all participants: ${totalStakeAmount} USDC`,
-    `Total prize pool amount: ${totalPrizePoolAmount} USDC`,
-    `Discrepancy: ${totalPrizePoolAmount - totalStakeAmount} USDC`,
-    `Average stake per challenge: ${averageStake.toFixed(2)} USDC`,
+    `Total stake amount across all participants: ${totalStakeAmount} ETH`,
+    `Total prize pool amount: ${totalPrizePoolAmount} ETH`,
+    `Discrepancy: ${totalPrizePoolAmount - totalStakeAmount} ETH`,
+    `Average stake per challenge: ${averageStake.toFixed(2)} ETH`,
     `Average participants per challenge: ${averageParticipants.toFixed(1)}`,
   ];
 
@@ -146,7 +146,7 @@ export function calculateExpectedPrizePool(
  * Format validation results for console output
  */
 export function formatValidationReport(analysis: PoolAnalysis): string {
-  let report = "\n=== USDC PRIZE POOL VALIDATION REPORT ===\n\n";
+  let report = "\n=== ETH PRIZE POOL VALIDATION REPORT ===\n\n";
 
   // Summary
   report += "SUMMARY:\n";
@@ -160,10 +160,10 @@ export function formatValidationReport(analysis: PoolAnalysis): string {
     report += "\nINCORRECT CALCULATIONS:\n";
     invalidChallenges.forEach((result) => {
       report += `\n  ${result.challengeName} (${result.challengeId}):\n`;
-      report += `    Stake: ${result.stake} USDC × ${result.participants} participants\n`;
-      report += `    Expected: ${result.expectedPrizePool} USDC\n`;
-      report += `    Actual: ${result.currentPrizePool} USDC\n`;
-      report += `    Discrepancy: ${result.discrepancy > 0 ? "+" : ""}${result.discrepancy} USDC\n`;
+      report += `    Stake: ${result.stake} ETH × ${result.participants} participants\n`;
+      report += `    Expected: ${result.expectedPrizePool} ETH\n`;
+      report += `    Actual: ${result.currentPrizePool} ETH\n`;
+      report += `    Discrepancy: ${result.discrepancy > 0 ? "+" : ""}${result.discrepancy} ETH\n`;
       result.validationNotes.forEach((note) => {
         report += `    ⚠️  ${note}\n`;
       });
@@ -175,7 +175,7 @@ export function formatValidationReport(analysis: PoolAnalysis): string {
   if (validChallenges.length > 0) {
     report += "\nCORRECT CALCULATIONS:\n";
     validChallenges.forEach((result) => {
-      report += `  ✅ ${result.challengeName}: ${result.stake} × ${result.participants} = ${result.currentPrizePool} USDC\n`;
+      report += `  ✅ ${result.challengeName}: ${result.stake} × ${result.participants} = ${result.currentPrizePool} ETH\n`;
     });
   }
 

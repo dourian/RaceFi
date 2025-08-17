@@ -1,7 +1,7 @@
 export interface BalanceTransaction {
   id: string;
   type: "win" | "cashout";
-  amount: number; // USDC amount
+  amount: number; // ETH amount
   challengeId?: string; // For wins
   challengeName?: string; // For display
   timestamp: Date;
@@ -9,9 +9,9 @@ export interface BalanceTransaction {
 }
 
 export interface UserBalance {
-  totalBalance: number; // Total USDC available for cashout
-  totalEarned: number; // Total USDC ever earned
-  totalCashedOut: number; // Total USDC cashed out
+  totalBalance: number; // Total ETH available for cashout
+  totalEarned: number; // Total ETH ever earned
+  totalCashedOut: number; // Total ETH cashed out
   transactions: BalanceTransaction[];
   lastCashoutAt?: Date;
 }
@@ -89,7 +89,7 @@ export class UserBalanceService {
       type: "cashout",
       amount: cashoutAmount,
       timestamp: new Date(),
-      description: `Cashed out ${cashoutAmount} USDC to wallet`,
+      description: `Cashed out ${cashoutAmount} ETH to wallet`,
     };
 
     const updatedBalance: UserBalance = {
@@ -136,7 +136,7 @@ export class UserBalanceService {
    * Format balance amount for display
    */
   static formatAmount(amount: number): string {
-    return `${amount.toFixed(2)} USDC`;
+    return `${amount.toFixed(6)} ETH`;
   }
 
   /**

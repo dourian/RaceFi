@@ -49,7 +49,7 @@ export const ONRAMP_CONFIG = {
   DEFAULT_ASSET:
     (process.env.EXPO_PUBLIC_ONRAMP_ASSET as string | undefined) ||
     (extra.EXPO_PUBLIC_ONRAMP_ASSET as string | undefined) ||
-    "USDC",
+    "ETH",
   DEFAULT_REDIRECT_URL:
     (process.env.EXPO_PUBLIC_ONRAMP_REDIRECT_URL as string | undefined) ||
     (extra.EXPO_PUBLIC_ONRAMP_REDIRECT_URL as string | undefined) ||

@@ -23,7 +23,7 @@ export interface UserChallengeStatus {
   joinedAt?: Date;
   runData?: ChallengeRunData;
   isWinner?: boolean;
-  winnerRewards?: number; // USDC reward amount
+  winnerRewards?: number; // ETH reward amount
   cashedOutAt?: Date; // When the user cashed out their winnings
 }
 
@@ -217,7 +217,7 @@ export class ChallengeService {
   /**
    * Simulate challenge ending with user as winner (for testing)
    * @param existingStatus Current challenge status
-   * @param prizePoolAmount Prize pool amount in USDC
+   * @param prizePoolAmount Prize pool amount in ETH
    * @param challenge Challenge object to check expiration
    * @returns Updated status as winner with winnings automatically added to balance
    */

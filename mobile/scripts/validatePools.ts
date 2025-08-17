@@ -1,5 +1,5 @@
 /**
- * Test script to validate USDC prize pool calculations
+ * Test script to validate ETH prize pool calculations
  * Run with: npx ts-node scripts/validatePools.ts
  */
 
@@ -7,7 +7,7 @@ import { challenges } from '../mock/mockChallenges';
 import { analyzeAllPools, formatValidationReport } from '../utils/poolValidation';
 
 function main() {
-  console.log('🔍 Validating USDC Prize Pool Calculations...\n');
+  console.log('🔍 Validating ETH Prize Pool Calculations...\n');
   
   // Analyze all challenges
   const analysis = analyzeAllPools(challenges);
@@ -21,14 +21,14 @@ function main() {
   
   analysis.results.forEach((result, index) => {
     const status = result.isValid ? '✅ VALID' : '❌ INVALID';
-    const formula = `${result.stake} USDC × ${result.participants} participants`;
-    const calculation = `${result.expectedPrizePool} USDC expected vs ${result.currentPrizePool} USDC actual`;
+    const formula = `${result.stake} ETH × ${result.participants} participants`;
+    const calculation = `${result.expectedPrizePool} ETH expected vs ${result.currentPrizePool} ETH actual`;
     
     console.log(`${index + 1}. ${result.challengeName}`);
     console.log(`   ${status}: ${formula} = ${calculation}`);
     
     if (!result.isValid) {
-      console.log(`   🔴 Discrepancy: ${result.discrepancy > 0 ? '+' : ''}${result.discrepancy} USDC`);
+      console.log(`   🔴 Discrepancy: ${result.discrepancy > 0 ? '+' : ''}${result.discrepancy} ETH`);
     }
     
     // Show participant capacity
@@ -49,10 +49,10 @@ function main() {
   console.log(`   • Total challenges analyzed: ${analysis.totalChallenges}`);
   console.log(`   • Challenges with correct calculations: ${analysis.validChallenges}`);
   console.log(`   • Challenges with incorrect calculations: ${analysis.invalidChallenges}`);
-  console.log(`   • Total USDC staked by all participants: ${analysis.totalStakeAmount}`);
-  console.log(`   • Total USDC in all prize pools: ${analysis.totalPrizePoolAmount}`);
-  console.log(`   • System discrepancy: ${analysis.totalPrizePoolAmount - analysis.totalStakeAmount} USDC`);
-  console.log(`   • Average stake per challenge: ${analysis.averageStake.toFixed(2)} USDC`);
+  console.log(`   • Total ETH staked by all participants: ${analysis.totalStakeAmount}`);
+  console.log(`   • Total ETH in all prize pools: ${analysis.totalPrizePoolAmount}`);
+  console.log(`   • System discrepancy: ${analysis.totalPrizePoolAmount - analysis.totalStakeAmount} ETH`);
+  console.log(`   • Average stake per challenge: ${analysis.averageStake.toFixed(2)} ETH`);
   console.log(`   • Average participants per challenge: ${analysis.averageParticipants.toFixed(1)}`);
   
   // Return exit code based on validation
