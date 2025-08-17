@@ -78,6 +78,65 @@ export default function RouteCreationPreview({
 
   const region = getMapRegion();
 
+  // Calculate directional markers - simplified approach
+  const getDirectionalMarkers = () => {
+    if (routePoints.length === 0) return [];
+    
+    const markers = [];
+    
+    // For routes with few points, show all points with numbers
+    if (routePoints.length <= 5) {
+      routePoints.forEach((point, index) => {
+        markers.push({
+          coordinate: point,
+          number: index === 0 ? 1 : index === routePoints.length - 1 ? 'F' : index + 1,
+          isStart: index === 0,
+          isEnd: index === routePoints.length - 1 && index > 0,
+          id: `marker-${index}`,
+        });
+      });
+      return markers;
+    }
+    
+    // For longer routes, show start, some middle points, and finish
+    const step = Math.max(1, Math.floor(routePoints.length / 5));
+    
+    // Always add start
+    markers.push({
+      coordinate: routePoints[0],
+      number: 1,
+      isStart: true,
+      isEnd: false,
+      id: 'marker-start',
+    });
+    
+    // Add middle markers
+    for (let i = step; i < routePoints.length - 1; i += step) {
+      markers.push({
+        coordinate: routePoints[i],
+        number: Math.floor(i / step) + 1,
+        isStart: false,
+        isEnd: false,
+        id: `marker-${i}`,
+      });
+    }
+    
+    // Always add finish if more than 1 point
+    if (routePoints.length > 1) {
+      markers.push({
+        coordinate: routePoints[routePoints.length - 1],
+        number: 'F',
+        isStart: false,
+        isEnd: true,
+        id: 'marker-finish',
+      });
+    }
+    
+    return markers;
+  };
+  
+  const directionalMarkers = getDirectionalMarkers();
+
   return (
     <View style={[styles.container, style]}>
       <View style={styles.header}>
@@ -118,28 +177,22 @@ export default function RouteCreationPreview({
               />
             )}
 
-            {/* Route markers */}
-            {routePoints.map((point, index) => (
+            {/* Directional markers every 1km for preview */}
+            {directionalMarkers.map((marker) => (
               <Marker
-                key={point.id}
-                coordinate={point}
+                key={marker.id}
+                coordinate={marker.coordinate}
                 anchor={{ x: 0.5, y: 0.5 }}
               >
                 <View
                   style={[
-                    styles.markerContainer,
-                    index === 0 && styles.startMarker,
-                    index === routePoints.length - 1 &&
-                      index > 0 &&
-                      styles.endMarker,
+                    styles.directionMarker,
+                    marker.isStart && styles.startDirectionMarker,
+                    marker.isEnd && styles.endDirectionMarker,
                   ]}
                 >
-                  <Text style={styles.markerText}>
-                    {index === 0
-                      ? "S"
-                      : index === routePoints.length - 1 && index > 0
-                        ? "F"
-                        : index + 1}
+                  <Text style={styles.directionMarkerText}>
+                    {marker.number}
                   </Text>
                 </View>
               </Marker>
@@ -228,26 +281,32 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     color: colors.accent,
   },
-  markerContainer: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+  directionMarker: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: colors.accent,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 2,
+    borderWidth: 3,
     borderColor: "white",
+    ...shadows.button,
   },
-  startMarker: {
+  startDirectionMarker: {
     backgroundColor: "#22c55e",
+    borderColor: "#16a34a",
   },
-  endMarker: {
+  endDirectionMarker: {
     backgroundColor: "#ef4444",
+    borderColor: "#dc2626",
   },
-  markerText: {
+  directionMarkerText: {
     color: "white",
-    fontSize: 10,
-    fontWeight: "700",
+    fontSize: 12,
+    fontWeight: "800",
+    textShadowColor: "rgba(0,0,0,0.3)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   emptyState: {
     alignItems: "center",

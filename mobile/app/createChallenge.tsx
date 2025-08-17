@@ -19,6 +19,7 @@ import { colors, spacing, typography, shadows } from "./theme";
 import { ApiService, ChallengeCreateRequest } from "../services/apiService";
 import RouteCreationPreview from "../components/RouteCreationPreview";
 import { RouteStorage } from "../utils/routeStorage";
+import { LocationService } from "../services/locationService";
 import { useFocusEffect } from "@react-navigation/native";
 
 export default function CreateChallengeScreen() {
@@ -43,6 +44,27 @@ export default function CreateChallengeScreen() {
   });
   const [routePoints, setRoutePoints] = useState<RoutePoint[]>([]);
   const [routeDistance, setRouteDistance] = useState(0);
+  const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+
+  // Auto-populate location based on route points
+  const autoPopulateLocation = useCallback(async (points: RoutePoint[]) => {
+    if (points.length === 0 || formData.location.trim() !== '') {
+      return; // Don't override existing location
+    }
+
+    setIsLoadingLocation(true);
+    try {
+      const locationInfo = await LocationService.getLocationFromRoute(points);
+      if (locationInfo) {
+        const simplifiedLocation = LocationService.getSimplifiedLocation(locationInfo);
+        updateField('location', simplifiedLocation);
+      }
+    } catch (error) {
+      console.error('Error auto-populating location:', error);
+    } finally {
+      setIsLoadingLocation(false);
+    }
+  }, [formData.location]);
 
   // Load saved route data when returning from route creation
   useFocusEffect(
@@ -55,6 +77,14 @@ export default function CreateChallengeScreen() {
             setRouteDistance(savedRoute.distance);
             updateField('distance_km', savedRoute.distance.toFixed(2));
             updateField('polyline', savedRoute.polyline);
+            
+            // Use saved location if available, otherwise auto-populate
+            if (savedRoute.location && formData.location.trim() === '') {
+              updateField('location', savedRoute.location);
+            } else {
+              await autoPopulateLocation(savedRoute.points);
+            }
+            
             console.log('Loaded saved route:', savedRoute);
           }
         } catch (error) {
@@ -62,7 +92,7 @@ export default function CreateChallengeScreen() {
         }
       };
       loadSavedRoute();
-    }, [])
+    }, [autoPopulateLocation])
   );
 
   // Clear route data when component unmounts (leaving the screen)
@@ -493,13 +523,25 @@ export default function CreateChallengeScreen() {
 
               <View style={styles.fieldGroup}>
                 <Text style={styles.label}>Location *</Text>
-                <TextInput
-                  style={styles.input}
-                  value={formData.location}
-                  onChangeText={(value) => updateField("location", value)}
-                  placeholder="Cupertino, CA"
-                  placeholderTextColor={colors.textMuted}
-                />
+                <View style={styles.inputContainer}>
+                  <Ionicons
+                    name="location"
+                    size={16}
+                    color="#9ca3af"
+                    style={styles.inputIcon}
+                  />
+                  <TextInput
+                    style={styles.inputWithIcon}
+                    value={formData.location}
+                    onChangeText={(value) => updateField("location", value)}
+                    placeholder={isLoadingLocation ? "Loading location..." : "Cupertino, CA"}
+                    placeholderTextColor={colors.textMuted}
+                    editable={!isLoadingLocation}
+                  />
+                  {isLoadingLocation && (
+                    <ActivityIndicator size="small" color={colors.accent} style={{ marginLeft: 8 }} />
+                  )}
+                </View>
               </View>
 
               <View style={styles.row}>

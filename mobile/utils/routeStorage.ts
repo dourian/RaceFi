@@ -11,6 +11,7 @@ export interface RouteData {
   distance: number;
   polyline: string;
   createdAt: string;
+  location?: string; // Optional location string for the route
 }
 
 const ROUTE_STORAGE_KEY = 'temp_route_data';

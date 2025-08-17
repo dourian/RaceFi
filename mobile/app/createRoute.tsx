@@ -233,12 +233,26 @@ export default function CreateRouteScreen() {
     }
 
     try {
+      // Get location information for the route
+      let locationString: string | undefined;
+      try {
+        const LocationService = require('../services/locationService').LocationService;
+        const locationInfo = await LocationService.getLocationFromRoute(routePoints);
+        if (locationInfo) {
+          locationString = LocationService.getSimplifiedLocation(locationInfo);
+        }
+      } catch (locationError) {
+        console.warn('Could not get location for route:', locationError);
+        // Continue without location - it's optional
+      }
+
       // Create route data with proper polyline encoding
       const routeData = {
         points: routePoints,
         distance: routeDistance,
         polyline: RouteStorage.encodePolyline(routePoints),
         createdAt: new Date().toISOString(),
+        location: locationString,
       };
 
       // Save route data temporarily
@@ -247,7 +261,8 @@ export default function CreateRouteScreen() {
       console.log('Route saved:', {
         pointCount: routePoints.length,
         distance: routeDistance,
-        polyline: routeData.polyline
+        polyline: routeData.polyline,
+        location: locationString
       });
 
       // Return to challenge creation
