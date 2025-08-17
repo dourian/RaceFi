@@ -73,7 +73,7 @@ export class ApiService {
       new Set(
         (data || [])
           .map((row) => row.created_by_profile_id)
-          .filter((v): v is number => Number.isFinite(v as any)),
+          .filter((v): v is string => typeof v === "string"),
       ),
     );
 
@@ -172,7 +172,7 @@ export class ApiService {
       let profRes = await supabase
         .from("profiles")
         .select("first_name,last_name,avatar_url,email")
-        .eq("id", String(createdBy))
+        .eq("id", createdBy as any) // Adjusted to use 'createdBy' as 'any' to match parameter type
         .maybeSingle();
       if (profRes.error) {
         // Try as numeric id
