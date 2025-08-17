@@ -19,5 +19,8 @@
   "homepage": "https://github.com/dourian/RaceFi#readme",
   "dependencies": {
     "@openzeppelin/contracts": "^5.4.0"
+  },
+  "devDependencies": {
+    "hardhat": "^3.0.0"
   }
 }

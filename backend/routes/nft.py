@@ -8,6 +8,7 @@ from web3 import Web3
 from dotenv import load_dotenv
 from solcx import compile_standard, install_solc
 import json
+from services.walrus_service import WalrusService
 
 load_dotenv()
 
@@ -18,21 +19,30 @@ RPC_URL        = os.getenv("RPC_URL")
 PUBLIC_ADDRESS = os.getenv("PUBLIC_ADDRESS")
 PRIVATE_KEY    = os.getenv("PRIVATE_KEY")
 CHAIN_ID       = int(os.getenv("CHAIN_ID", "11155111"))
-PINATA_API_KEY = os.getenv("PINATA_API_KEY")
-PINATA_API_SECRET = os.getenv("PINATA_API_SECRET")
-PINATA_JWT = os.getenv("PINATA_JWT")
-PINATA_BASE_URL = "https://api.pinata.cloud/pinning"
+WALRUS_CONFIG_PATH = os.getenv("WALRUS_CONFIG_PATH", None)  # Make config optional
 
 # Print environment status (without exposing private key)
+# Initialize Walrus service
+try:
+    walrus_service = WalrusService(WALRUS_CONFIG_PATH)
+    print("Walrus service initialized successfully")
+except Exception as e:
+    print(f"Warning: Could not initialize Walrus service: {e}")
+    walrus_service = None
+
 print(f"NFT Module Environment Status:")
 print(f"- RPC_URL: {'Set' if RPC_URL else 'NOT SET'}")
 print(f"- PUBLIC_ADDRESS: {'Set' if PUBLIC_ADDRESS else 'NOT SET'}")
 print(f"- PRIVATE_KEY: {'Set' if PRIVATE_KEY else 'NOT SET'}")
 print(f"- CHAIN_ID: {CHAIN_ID}")
-print(f"- PINATA API: {'Using JWT' if PINATA_JWT else 'Using API Key' if PINATA_API_KEY and PINATA_API_SECRET else 'NOT SET'}")
+print(f"- WALRUS_CONFIG_PATH: {WALRUS_CONFIG_PATH}")
+print(f"- WALRUS_SERVICE: {'Initialized' if walrus_service else 'NOT INITIALIZED'}")
 
 if not (RPC_URL and PUBLIC_ADDRESS and PRIVATE_KEY):
     raise RuntimeError("RPC_URL, PUBLIC_ADDRESS, and PRIVATE_KEY must be set in environment")
+
+if not walrus_service:
+    raise RuntimeError("WALRUS_CONFIG_PATH must be set and valid for NFT operations")
 
 # Configure Web3 with timeout parameters to avoid hanging
 w3 = Web3(Web3.HTTPProvider(RPC_URL, request_kwargs={'timeout': 15}))
@@ -40,6 +50,15 @@ w3 = Web3(Web3.HTTPProvider(RPC_URL, request_kwargs={'timeout': 15}))
 # Helper function to get the next nonce for a transaction
 def next_nonce(address):
     return w3.eth.get_transaction_count(Web3.to_checksum_address(address))
+
+# Helper function to get the next token ID that will be minted
+def get_next_token_id(contract):
+    """Get the next token ID that will be minted"""
+    try:
+        return contract.functions.getCurrentTokenId().call({"timeout": 5})
+    except Exception as e:
+        print(f"Could not get next token ID: {str(e)}")
+        return 0
 
 # Helper function to validate contract
 def validate_contract(contract_address):
@@ -77,29 +96,69 @@ install_solc(SOLIDITY_VERSION)
 OZ_ERC721_SOURCE = """
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract GLBNFT is ERC721URIStorage, Ownable {
+contract GLBNFT {
+    string public name;
+    string public symbol;
+    address public owner;
     uint256 private _nextTokenId;
     
-    // Event to make token ID easier to track
-    event NFTMinted(address indexed recipient, uint256 indexed tokenId, string tokenURI);
+    mapping(uint256 => address) private _owners;
+    mapping(address => uint256) private _balances;
+    mapping(uint256 => string) private _tokenURIs;
     
-    constructor(string memory name_, string memory symbol_) ERC721(name_, symbol_) Ownable(msg.sender) {}
+    event NFTMinted(address indexed recipient, uint256 indexed tokenId, string tokenURI);
+    event Transfer(address indexed from, address indexed to, uint256 indexed tokenId);
+    
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Not owner");
+        _;
+    }
+    
+    constructor(string memory name_, string memory symbol_) {
+        name = name_;
+        symbol = symbol_;
+        owner = msg.sender;
+    }
     
     function mintNFT(address recipient, string memory tokenURI) public onlyOwner returns (uint256) {
         uint256 tokenId = _nextTokenId++;
         _mint(recipient, tokenId);
         _setTokenURI(tokenId, tokenURI);
         
-        // Emit event with all the information
         emit NFTMinted(recipient, tokenId, tokenURI);
-        
         return tokenId;
     }
     
-    // Helper function to get the current token ID counter
+    function _mint(address to, uint256 tokenId) internal {
+        require(to != address(0), "Invalid recipient");
+        require(_owners[tokenId] == address(0), "Token already exists");
+        
+        _balances[to]++;
+        _owners[tokenId] = to;
+        
+        emit Transfer(address(0), to, tokenId);
+    }
+    
+    function _setTokenURI(uint256 tokenId, string memory tokenURI) internal {
+        _tokenURIs[tokenId] = tokenURI;
+    }
+    
+    function ownerOf(uint256 tokenId) public view returns (address) {
+        address tokenOwner = _owners[tokenId];
+        require(tokenOwner != address(0), "Token does not exist");
+        return tokenOwner;
+    }
+    
+    function balanceOf(address account) public view returns (uint256) {
+        return _balances[account];
+    }
+    
+    function tokenURI(uint256 tokenId) public view returns (string memory) {
+        require(_owners[tokenId] != address(0), "Token does not exist");
+        return _tokenURIs[tokenId];
+    }
+    
     function getCurrentTokenId() public view returns (uint256) {
         return _nextTokenId;
     }
@@ -112,14 +171,10 @@ def compile_contract():
             "language": "Solidity",
             "sources": {"GLBNFT.sol": {"content": OZ_ERC721_SOURCE}},
             "settings": {
-                "outputSelection": {"*": {"*": ["abi", "evm.bytecode"]}},
-                "remappings": [
-                    "@openzeppelin/=C:/Users/tongl/RaceFi/node_modules/@openzeppelin/"
-                ]
+                "outputSelection": {"*": {"*": ["abi", "evm.bytecode"]}}
             },
         },
-        solc_version=SOLIDITY_VERSION,
-        allow_paths=["C:/Users/tongl/RaceFi/node_modules"]
+        solc_version=SOLIDITY_VERSION
     )
     contract_interface = compiled["contracts"]["GLBNFT.sol"]["GLBNFT"]
     return contract_interface["abi"], contract_interface["evm"]["bytecode"]["object"]
@@ -218,27 +273,19 @@ def sign_send_wait(tx):
         print(f"Transaction error: {str(e)}")
         raise
 
-def upload_file_to_pinata(file_bytes, filename="file.glb"):
+def upload_file_to_walrus(file_bytes, filename="file.glb"):
     """
-    Upload a file to Pinata and return its ipfs:// URI
+    Upload a file to Walrus and return its blob ID
     """
-    headers = {}
-    if PINATA_JWT:
-        headers["Authorization"] = f"Bearer {PINATA_JWT}"
-    else:
-        headers["pinata_api_key"] = PINATA_API_KEY
-        headers["pinata_secret_api_key"] = PINATA_API_SECRET
+    try:
+        blob_id = walrus_service.store_bytes(file_bytes, filename)
+        return blob_id
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Walrus file upload failed: {str(e)}")
 
-    files = {"file": (filename, file_bytes)}
-    response = requests.post(f"{PINATA_BASE_URL}/pinFileToIPFS", headers=headers, files=files)
-    if response.status_code != 200:
-        raise HTTPException(status_code=500, detail=f"Pinata file upload failed: {response.text}")
-    ipfs_hash = response.json()["IpfsHash"]
-    return f"ipfs://{ipfs_hash}"
-
-def upload_metadata_to_pinata(name, description, file_uri, challenge_id="", image_uri="https://coffee-top-walrus-619.mypinata.cloud/ipfs/bafybeibnf73slsl6fjskpk4bwwchu73ikr4qgkvqmckszo2ktenyhwkblm"):
+def upload_metadata_to_walrus(name, description, file_uri, challenge_id="", image_uri="https://bafkreihdtdkjpwwu6qlldzjjgj4ixwrp3yvbcqvpfq7uxvmwmbop65yxfm.ipfs.nftstorage.link/"):
     """
-    Upload JSON metadata to Pinata and return its ipfs:// URI
+    Upload JSON metadata to Walrus and return its blob ID
     
     Parameters:
     - name: Name of the NFT
@@ -246,15 +293,6 @@ def upload_metadata_to_pinata(name, description, file_uri, challenge_id="", imag
     - file_uri: URI to the 3D model file (GLB)
     - image_uri: Optional URI to a 2D preview image. If not provided, file_uri is used.
     """
-    headers = {
-        "Content-Type": "application/json",
-    }
-    if PINATA_JWT:
-        headers["Authorization"] = f"Bearer {PINATA_JWT}"
-    else:
-        headers["pinata_api_key"] = PINATA_API_KEY
-        headers["pinata_secret_api_key"] = PINATA_API_SECRET
-
     # Use a default fallback image if none provided
     if not image_uri:
         image_uri = "https://bafkreihdtdkjpwwu6qlldzjjgj4ixwrp3yvbcqvpfq7uxvmwmbop65yxfm.ipfs.nftstorage.link/"
@@ -281,11 +319,11 @@ def upload_metadata_to_pinata(name, description, file_uri, challenge_id="", imag
             "value": challenge_id
         })
 
-    response = requests.post(f"{PINATA_BASE_URL}/pinJSONToIPFS", headers=headers, json=metadata)
-    if response.status_code != 200:
-        raise HTTPException(status_code=500, detail=f"Pinata metadata upload failed: {response.text}")
-    ipfs_hash = response.json()["IpfsHash"]
-    return f"ipfs://{ipfs_hash}"
+    try:
+        blob_id = walrus_service.store_json(metadata)
+        return blob_id
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Walrus metadata upload failed: {str(e)}")
 # --- Request Models ---
 class DeployContractRequest(BaseModel):
     name: str = "RaceFi NFT"
@@ -326,9 +364,9 @@ def mint_floating_line(req: MintFloatingLineRequest):
             raise HTTPException(status_code=500, detail=f"Dimension service failed: {resp.text}")
         glb_bytes = resp.content
 
-        # 2️⃣ Upload GLB & metadata to Pinata
-        file_uri = upload_file_to_pinata(glb_bytes, filename="floating_line.glb")
-        token_uri = upload_metadata_to_pinata(req.name, req.description, file_uri, req.challenge_id)
+        # 2️⃣ Upload GLB & metadata to Walrus
+        file_uri = upload_file_to_walrus(glb_bytes, filename="floating_line.glb")
+        token_uri = upload_metadata_to_walrus(req.name, req.description, file_uri, req.challenge_id)
 
         # 3️⃣ Deploy contract if needed or validate existing contract
         contract_address = req.contract_address
@@ -366,123 +404,23 @@ def mint_floating_line(req: MintFloatingLineRequest):
             "gas": gas_limit,
             "gasPrice": w3.to_wei(5, "gwei")  # Legacy gas pricing
         })
+        
+        # Get the current token ID before minting (this will be our new token ID)
+        try:
+            current_token_id = get_next_token_id(contract)
+            print(f"Current token ID before minting: {current_token_id}")
+        except Exception as e:
+            print(f"Could not get current token ID: {str(e)}")
+            current_token_id = 0
+        
+        # Mint the NFT
         tx_hash, receipt = sign_send_wait(tx)
         
-        # Use a more efficient approach to find the correct token ID
-        token_id = None  # Start with None, will try to find the correct ID
+        # The new token ID is the previous current token ID
+        token_id = current_token_id
         
-        try:
-            print("Checking for the correct token ID...")
-            recipient_address = Web3.to_checksum_address(req.recipient)
-            
-            # Check token IDs 0-50 with a short timeout
-            for i in range(51):  # 0 to 50
-                try:
-                    # Set a short timeout for each call
-                    owner = contract.functions.ownerOf(i).call({"timeout": 2})
-                    print(f"Token ID {i} is owned by: {owner}")
-                    
-                    if owner.lower() == recipient_address.lower():
-                        print(f"Found matching token ID {i} owned by recipient")
-                        token_id = i
-                        
-                        # Try to verify this is the token we just minted by checking its URI
-                        try:
-                            current_uri = contract.functions.tokenURI(i).call({"timeout": 2})
-                            print(f"Token {i} URI: {current_uri}")
-                            
-                            # If this URI matches what we just set, this is definitely our token
-                            if current_uri == token_uri:
-                                print(f"Confirmed token ID {i} has the URI we just set")
-                                break  # We found our token, stop checking
-                        except Exception as uri_err:
-                            print(f"Couldn't check URI for token {i}: {str(uri_err)}")
-                except Exception as e:
-                    if "nonexistent token" in str(e).lower():
-                        print(f"Token ID {i} does not exist")
-                    else:
-                        print(f"Error checking token ID {i}: {str(e)}")
-                    
-                    # If we've already found a token owned by the recipient, stop checking
-                    if token_id is not None:
-                        break
-                    
-                    # If we get any other error on token ID 0, it might be that the contract
-                    # doesn't support the ownerOf function or there's another issue
-                    if i == 0:
-                        print("Error on token ID 0, will default to 0 at the end if needed")
-        except Exception as e:
-            print(f"Error in token ID check: {str(e)}")
+        print(f"Successfully minted NFT with token ID: {token_id}")
         
-        # If we couldn't find a token ID in the first range, try some alternative approaches
-        if token_id is None:
-            # Try to get the total supply or next token ID from the contract
-            try:
-                print("Trying to get contract's total supply or next token ID...")
-                
-                # Try different common functions that might exist on the contract
-                next_token_id = None
-                
-                # Try getCurrentTokenId (our custom function)
-                try:
-                    next_token_id = contract.functions.getCurrentTokenId().call({"timeout": 2})
-                    print(f"getCurrentTokenId() returned: {next_token_id}")
-                    if next_token_id > 0:
-                        # Check the previous token ID (most recently minted)
-                        check_id = next_token_id - 1
-                        try:
-                            owner = contract.functions.ownerOf(check_id).call({"timeout": 2})
-                            if owner.lower() == recipient_address.lower():
-                                print(f"Found matching token ID {check_id} owned by recipient")
-                                token_id = check_id
-                        except Exception as e:
-                            print(f"Error checking token ID {check_id}: {str(e)}")
-                except Exception:
-                    pass
-                    
-                # Try totalSupply (ERC721Enumerable)
-                if token_id is None:
-                    try:
-                        total = contract.functions.totalSupply().call({"timeout": 2})
-                        print(f"totalSupply() returned: {total}")
-                        if total > 0:
-                            # Check the last token (most recently minted)
-                            check_id = total - 1
-                            try:
-                                owner = contract.functions.ownerOf(check_id).call({"timeout": 2})
-                                if owner.lower() == recipient_address.lower():
-                                    print(f"Found matching token ID {check_id} owned by recipient")
-                                    token_id = check_id
-                            except Exception as e:
-                                print(f"Error checking token ID {check_id}: {str(e)}")
-                    except Exception:
-                        pass
-            except Exception as e:
-                print(f"Error trying alternative approaches: {str(e)}")
-            
-            # If still not found, check some higher token IDs
-            if token_id is None:
-                print("Checking some higher token IDs...")
-                # Check some higher token IDs that might be common (100, 1000, etc.)
-                higher_ids = [100, 200, 500, 1000]
-                for i in higher_ids:
-                    try:
-                        owner = contract.functions.ownerOf(i).call({"timeout": 2})
-                        print(f"Token ID {i} is owned by: {owner}")
-                        
-                        if owner.lower() == recipient_address.lower():
-                            print(f"Found matching token ID {i} owned by recipient")
-                            token_id = i
-                            break
-                    except Exception:
-                        # Just skip errors for higher IDs
-                        pass
-        
-        # If we still couldn't find a token ID, default to 0
-        if token_id is None:
-            print("Could not determine token ID, defaulting to 0")
-            token_id = 0
-            
         return {
             "message": f"NFT minted to {req.recipient}",
             "contract_address": contract_address,
@@ -490,6 +428,7 @@ def mint_floating_line(req: MintFloatingLineRequest):
             "tx_hash": tx_hash,
             "block_number": receipt.blockNumber,
             "token_uri": token_uri,
+            "file_uri": file_uri,  # GLB file blob reference
             "challenge_id": req.challenge_id if req.challenge_id else None,
             "view_on_explorer": f"https://sepolia.etherscan.io/token/{contract_address}?a={req.recipient}"
         }
@@ -513,3 +452,305 @@ def mint_floating_line(req: MintFloatingLineRequest):
             raise HTTPException(status_code=500, detail=f"Private key error: Check your PRIVATE_KEY environment variable")
         else:
             raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+
+@router.get("/blob/{blob_id}")
+def get_blob_info(blob_id: str):
+    """Get information about a blob including filename"""
+    try:
+        print(f"🔍 Blob info request for: {blob_id}")
+        
+        if not walrus_service:
+            print("❌ Walrus service not available")
+            raise HTTPException(status_code=500, detail="Walrus service not available")
+        
+        # Get blob information from Walrus
+        try:
+            print(f"📋 Calling walrus_service.get_blob_info for: {blob_id}")
+            blob_info = walrus_service.get_blob_info(blob_id)
+            print(f"📋 Walrus response: {blob_info}")
+        except Exception as e:
+            print(f"❌ Error calling walrus_service.get_blob_info: {str(e)}")
+            raise HTTPException(
+                status_code=500, 
+                detail=f"Failed to get blob info from Walrus: {str(e)}"
+            )
+        
+        # Check if there was an error
+        if "error" in blob_info:
+            print(f"❌ Blob info contains error: {blob_info['error']}")
+            raise HTTPException(
+                status_code=404, 
+                detail=f"Blob not found or error occurred: {blob_info['error']}"
+            )
+        
+        # Extract filename from blob info
+        filename = blob_info.get("filename", f"blob_{blob_id[:8]}")
+        print(f"📁 Initial filename: {filename}")
+        
+        # If no filename in metadata, try to infer from content
+        if not filename or filename.startswith("blob_"):
+            try:
+                print(f"🔍 No filename in metadata, trying to infer from content...")
+                # Try to read the blob content to get more info
+                content = walrus_service.read_blob(blob_id)
+                print(f"✅ Content read successfully, size: {len(content)} bytes")
+                
+                # Check if it's JSON metadata
+                try:
+                    metadata = json.loads(content.decode('utf-8'))
+                    if "name" in metadata:
+                        filename = metadata["name"]
+                        print(f"📁 Found filename in JSON metadata: {filename}")
+                    elif "filename" in metadata:
+                        filename = metadata["filename"]
+                        print(f"📁 Found filename in JSON metadata: {filename}")
+                except Exception as json_error:
+                    print(f"⚠️  Could not parse as JSON: {str(json_error)}")
+                
+                # If still no good filename, use content type
+                if not filename or filename.startswith("blob_"):
+                    if content.startswith(b'\x89PNG'):
+                        filename = f"image_{blob_id[:8]}.png"
+                        print(f"📁 Detected PNG image: {filename}")
+                    elif content.startswith(b'\xff\xd8\xff'):
+                        filename = f"image_{blob_id[:8]}.jpg"
+                        print(f"📁 Detected JPEG image: {filename}")
+                    elif content.startswith(b'PK'):
+                        filename = f"archive_{blob_id[:8]}.zip"
+                        print(f"📁 Detected ZIP archive: {filename}")
+                    elif b'glTF' in content[:100]:
+                        filename = f"model_{blob_id[:8]}.glb"
+                        print(f"📁 Detected GLB model: {filename}")
+                    else:
+                        filename = f"file_{blob_id[:8]}.bin"
+                        print(f"📁 Default filename: {filename}")
+                
+                # Add size information
+                blob_info["size"] = len(content)
+                blob_info["content_preview"] = content[:100].hex() if len(content) > 0 else ""
+                
+            except Exception as e:
+                print(f"⚠️  Could not read blob content: {str(e)}")
+                # If we can't read the content, just use the basic info
+                blob_info["note"] = f"Could not read blob content: {str(e)}"
+        
+        # Ensure we have a filename
+        if not filename or filename.startswith("blob_"):
+            filename = f"file_{blob_id[:8]}.bin"
+            print(f"📁 Final fallback filename: {filename}")
+        
+        result = {
+            "blob_id": blob_id,
+            "filename": filename,
+            "size": blob_info.get("size", "unknown"),
+            "content_type": blob_info.get("content_type", "unknown"),
+            "metadata": blob_info,
+            "download_url": f"/nft/blob/{blob_id}/download" if blob_info.get("size") else None
+        }
+        
+        print(f"✅ Returning result: {result}")
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"💥 Unexpected error in get_blob_info: {str(e)}")
+        print(f"💥 Traceback: {error_trace}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Error getting blob info: {str(e)}"
+        )
+
+@router.get("/blob/{blob_id}/download")
+def download_blob(blob_id: str):
+    """Download a blob file"""
+    try:
+        print(f"🔍 Download request for blob: {blob_id}")
+        
+        if not walrus_service:
+            print("❌ Walrus service not available")
+            raise HTTPException(status_code=500, detail="Walrus service not available")
+        
+        # First try to get blob info to check if it exists
+        try:
+            print(f"📋 Getting blob info for: {blob_id}")
+            blob_info = walrus_service.get_blob_info(blob_id)
+            
+            if "error" in blob_info:
+                print(f"❌ Blob info error: {blob_info['error']}")
+                raise HTTPException(status_code=404, detail=f"Blob not found: {blob_info['error']}")
+                
+            filename = blob_info.get("filename", f"blob_{blob_id[:8]}.bin")
+            print(f"📁 Filename from metadata: {filename}")
+            
+        except Exception as info_error:
+            print(f"⚠️  Could not get blob info: {str(info_error)}")
+            filename = f"blob_{blob_id[:8]}.bin"
+        
+        # Try to read blob content
+        try:
+            print(f"📖 Reading blob content for: {blob_id}")
+            content = walrus_service.read_blob(blob_id)
+            print(f"✅ Blob content read successfully, size: {len(content)} bytes")
+            
+        except Exception as read_error:
+            print(f"❌ Failed to read blob content: {str(read_error)}")
+            
+            # Fallback: Try to provide a helpful error message
+            error_msg = str(read_error)
+            if "command not found" in error_msg.lower():
+                raise HTTPException(
+                    status_code=500, 
+                    detail="Walrus command not found. Please ensure Walrus is installed and accessible."
+                )
+            elif "timed out" in error_msg.lower():
+                raise HTTPException(
+                    status_code=500, 
+                    detail="Walrus command timed out. The storage system may be slow or unresponsive."
+                )
+            elif "exit code" in error_msg.lower():
+                raise HTTPException(
+                    status_code=500, 
+                    detail=f"Walrus command failed: {error_msg}"
+                )
+            else:
+                raise HTTPException(
+                    status_code=500, 
+                    detail=f"Failed to read blob content: {error_msg}"
+                )
+        
+        # Determine content type based on content
+        content_type = "application/octet-stream"
+        if content.startswith(b'\x89PNG'):
+            content_type = "image/png"
+            if not filename.endswith('.png'):
+                filename = f"{filename}.png"
+        elif content.startswith(b'\xff\xd8\xff'):
+            content_type = "image/jpeg"
+            if not filename.endswith('.jpg'):
+                filename = f"{filename}.jpg"
+        elif content.startswith(b'PK'):
+            content_type = "application/zip"
+            if not filename.endswith('.zip'):
+                filename = f"{filename}.zip"
+        elif b'glTF' in content[:100]:
+            content_type = "model/gltf-binary"
+            if not filename.endswith('.glb'):
+                filename = f"{filename}.glb"
+        elif content.startswith(b'{') or content.startswith(b'['):
+            content_type = "application/json"
+            if not filename.endswith('.json'):
+                filename = f"{filename}.json"
+        
+        print(f"🔧 Final filename: {filename}")
+        print(f"🔧 Content type: {content_type}")
+        
+        # Return file as download
+        from fastapi.responses import Response
+        return Response(
+            content=content,
+            media_type=content_type,
+            headers={
+                "Content-Disposition": f"attachment; filename=\"{filename}\"",
+                "Content-Length": str(len(content)),
+                "Cache-Control": "no-cache"
+            }
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"💥 Unexpected error in download_blob: {str(e)}")
+        print(f"💥 Traceback: {error_trace}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Unexpected error downloading blob: {str(e)}"
+        )
+
+@router.get("/debug/walrus")
+def debug_walrus_service():
+    """Debug endpoint to test Walrus service functionality"""
+    try:
+        print("🔍 Debug Walrus service request")
+        
+        if not walrus_service:
+            return {
+                "status": "error",
+                "message": "Walrus service not available",
+                "config_path": WALRUS_CONFIG_PATH,
+                "walrus_service": None
+            }
+        
+        # Test basic Walrus functionality
+        test_results = {}
+        
+        # Test 1: Check if Walrus command works
+        try:
+            print("🧪 Testing Walrus command execution...")
+            # Try a simple command like version or help
+            import subprocess
+            result = subprocess.run(
+                ["walrus", "--version"], 
+                capture_output=True, 
+                text=True, 
+                timeout=10
+            )
+            test_results["walrus_command"] = {
+                "success": result.returncode == 0,
+                "stdout": result.stdout.strip(),
+                "stderr": result.stderr.strip(),
+                "return_code": result.returncode
+            }
+            print(f"✅ Walrus command test: {test_results['walrus_command']}")
+        except Exception as e:
+            test_results["walrus_command"] = {
+                "success": False,
+                "error": str(e)
+            }
+            print(f"❌ Walrus command test failed: {str(e)}")
+        
+        # Test 2: Check Walrus service config
+        test_results["config"] = {
+            "config_path": WALRUS_CONFIG_PATH,
+            "config_exists": os.path.exists(WALRUS_CONFIG_PATH) if WALRUS_CONFIG_PATH else False,
+            "walrus_service_type": type(walrus_service).__name__
+        }
+        
+        # Test 3: Try to call a simple Walrus method
+        try:
+            print("🧪 Testing Walrus service methods...")
+            # This will test if the service can at least be instantiated
+            test_results["service_instantiation"] = {
+                "success": True,
+                "service_type": type(walrus_service).__name__
+            }
+        except Exception as e:
+            test_results["service_instantiation"] = {
+                "success": False,
+                "error": str(e)
+            }
+        
+        return {
+            "status": "success",
+            "message": "Walrus service diagnostic completed",
+            "test_results": test_results,
+            "environment": {
+                "WALRUS_CONFIG_PATH": WALRUS_CONFIG_PATH,
+                "walrus_service_available": walrus_service is not None
+            }
+        }
+        
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"💥 Error in debug endpoint: {str(e)}")
+        print(f"💥 Traceback: {error_trace}")
+        return {
+            "status": "error",
+            "message": f"Debug endpoint failed: {str(e)}",
+            "traceback": error_trace
+        }
