@@ -62,7 +62,7 @@ async def create_challenge_attendee(request: ChallengeAttendeeCreate):
         attendee_result = supabase.table('challenge_attendees').select('*').eq('challenge_id', request.challenge_id).execute()
         # Count creator as a runner as well
         current_count = (len(attendee_result.data or [])) + 1
-        if current_count \u003e= challenge.data[0]['max_participants']:
+        if current_count >= challenge.data[0]['max_participants']:
             raise HTTPException(status_code=400, detail="Challenge is full")
         
         # Check if participant already exists
