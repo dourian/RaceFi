@@ -35,7 +35,9 @@ import { useAppTime, getCurrentAppTime } from "../../helpers/timeManager";
 export default function ChallengeDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [challenge, setChallenge] = useState<Challenge | null>(null);
-  const [currentProfileId, setCurrentProfileId] = useState<string | number | null>(null);
+  const [currentProfileId, setCurrentProfileId] = useState<
+    string | number | null
+  >(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { getChallengeStatus, joinChallenge, startChallengeRun } =
@@ -80,10 +82,7 @@ export default function ChallengeDetail() {
   const isWinner = challengeStatus.status === "winner";
   const isCashedOut = challengeStatus.status === "cashOut";
   const isInProgress = challengeStatus.status === "in-progress";
-  const isCreator =
-    currentProfileId != null &&
-    challenge?.creatorProfileId != null &&
-    Number(currentProfileId) === Number(challenge.creatorProfileId);
+  // Creator can join like everyone else; no special disable logic
 
   // Calculate actual time remaining using challenge end date and current app time
   const getTimeRemaining = () => {
@@ -207,15 +206,13 @@ export default function ChallengeDetail() {
       return;
     }
 
-if (!id || !challenge || joining) return;
-
-    if (isCreator) {
-      Alert.alert("Creator", "You are the creator and already a participant.");
-      return;
-    }
+    if (!id || !challenge || joining) return;
 
     if (challenge.participants >= challenge.maxParticipants) {
-      Alert.alert("Challenge Full", "This challenge has reached the maximum number of participants.");
+      Alert.alert(
+        "Challenge Full",
+        "This challenge has reached the maximum number of participants.",
+      );
       return;
     }
 
@@ -231,7 +228,10 @@ if (!id || !challenge || joining) return;
       Alert.alert("Joined", "You have joined this challenge!");
     } catch (e: any) {
       const msg = String(e?.message || "");
-      if (msg.toLowerCase().includes("already") || msg.toLowerCase().includes("duplicate") ) {
+      if (
+        msg.toLowerCase().includes("already") ||
+        msg.toLowerCase().includes("duplicate")
+      ) {
         // Treat as already joined
         joinChallenge(id);
         const refreshed = await ApiService.getChallengeById(id);
@@ -432,22 +432,19 @@ if (!id || !challenge || joining) return;
                     onPress={handleJoinChallenge}
                     disabled={
                       joining ||
-                      challenge.participants >= challenge.maxParticipants ||
-                      isCreator
+                      challenge.participants >= challenge.maxParticipants
                     }
                     style={[
                       styles.joinButton,
-                      (joining || challenge.participants >= challenge.maxParticipants || isCreator) ? { opacity: 0.7 } : null,
+                      (joining || challenge.participants >= challenge.maxParticipants) ? { opacity: 0.7 } : null,
                     ]}
                   >
                     <Text style={styles.joinButtonText}>
                       {challenge.participants >= challenge.maxParticipants
                         ? "Challenge Full"
-                        : isCreator
-                          ? "Creator"
-                          : joining
-                            ? "Joining..."
-                            : "Stake & Join Challenge"}
+                        : joining
+                          ? "Joining..."
+                          : "Stake & Join Challenge"}
                     </Text>
                   </Pressable>
                   <Text style={styles.stakeDisclaimer}>
