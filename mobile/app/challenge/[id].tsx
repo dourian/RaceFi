@@ -10,8 +10,13 @@ import {
   Dimensions,
   Alert,
 } from "react-native";
+import { ActivityIndicator } from "react-native";
+import * as Clipboard from "expo-clipboard";
+import { Linking } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { ApiService } from "../../services/apiService";
+import { EscrowService } from "../../services/escrowService";
+import { ONRAMP_CONFIG, TOKEN_API_URL } from "../../app/config";
 import { Challenge } from "../../constants/types";
 import { colors, spacing, typography, shadows, borderRadius } from "../theme";
 import {
@@ -24,13 +29,14 @@ import {
   Progress,
   Separator,
 } from "../../components/ui";
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useChallenge } from "../../contexts/challengeContext";
 import { ChallengeService } from "../../services/challengeService";
 import { RunCalculationService } from "../../services/runCalculationService";
 import LeaderboardService from "../../services/leaderboardService";
 import StaticRoutePreview from "../../components/StaticRoutePreview";
 import { useAppTime, getCurrentAppTime } from "../../helpers/timeManager";
+import { getStoredWalletAddress } from "../../helpers/walletStorage";
 
 export default function ChallengeDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -38,6 +44,7 @@ export default function ChallengeDetail() {
   const [currentProfileId, setCurrentProfileId] = useState<
     string | number | null
   >(null);
+  const [currentProfile, setCurrentProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { getChallengeStatus, joinChallenge, startChallengeRun } =
@@ -65,16 +72,157 @@ export default function ChallengeDetail() {
     loadChallenge();
   }, [id]);
 
-  // Load current user profile id
+  // Load current user profile id and perform an initial on-chain join check
   useEffect(() => {
     const loadMe = async () => {
       try {
         const me: any = await ApiService.getCurrentUserProfile();
         if (me?.id != null) setCurrentProfileId(me.id as any);
+        if (me) setCurrentProfile(me);
+        // fallback: if profile has no wallet, hydrate from local storage
+        try {
+          if (!me?.wallet_address) {
+            const local = await getStoredWalletAddress();
+            if (local)
+              setCurrentProfile((prev: any) => ({
+                ...(prev || {}),
+                wallet_address: local,
+              }));
+          }
+        } catch {}
       } catch {}
     };
     loadMe();
   }, []);
+
+  // On mount and when profile/challenge changes, check on-chain hasJoined
+  useEffect(() => {
+    (async () => {
+      try {
+        if (!id || !challenge) return;
+        const addr = String(
+          (currentProfile?.wallet_address as string) || "",
+        ).trim();
+        if (!addr) {
+          setHasOnchainJoined(false);
+          return;
+        }
+        // Get raceId via join-calldata (no wallet open), then query hasJoined
+        const joinData = await EscrowService.getJoinCalldataByChallengeId(
+          Number(id),
+        );
+        // Store latest join info for UI copy helpers
+        try {
+          setLastJoinInfo({
+            to: (joinData as any)?.to,
+            valueWei: (joinData as any)?.value
+              ? String(BigInt((joinData as any).value))
+              : undefined,
+            raceId: (joinData as any)?.raceId,
+          });
+        } catch {}
+        const base = (TOKEN_API_URL || "").replace(/\/$/, "");
+        const raceId = (joinData as any)?.raceId as number | undefined;
+        if (!base || raceId == null) return;
+        const res = await fetch(`${base}/escrow/hasJoined/${raceId}/${addr}`);
+        if (res.ok) {
+          const j = await res.json();
+          setHasOnchainJoined(!!j?.joined);
+        } else {
+          setHasOnchainJoined(false);
+        }
+      } catch {
+        setHasOnchainJoined(false);
+      }
+    })();
+  }, [id, challenge?.id, currentProfile?.wallet_address]);
+
+  // Auto-claim pending credits into the race the user is viewing on refresh
+  useEffect(() => {
+    (async () => {
+      try {
+        if (!id || !challenge) return;
+        const addr = String((currentProfile?.wallet_address as string) || "").trim();
+        if (!addr) return;
+
+        // Get raceId for this challenge
+        const joinData = await EscrowService.getJoinCalldataByChallengeId(Number(id));
+        const raceId = (joinData as any)?.raceId as number | undefined;
+        if (raceId == null) return;
+
+        // Check if already joined first
+        const base = (TOKEN_API_URL || "").replace(/\/$/, "");
+        const res = await fetch(`${base}/escrow/hasJoined/${raceId}/${addr}`);
+        if (res.ok) {
+          const j = await res.json();
+          if (!!j?.joined) return; // nothing to do
+        }
+
+        if (autoClaiming) return; // avoid repeat
+        setAutoClaiming(true);
+
+        // If we have a remembered txHash for this join attempt, try backend ingestion
+        if (lastJoinInfo?.txHash) {
+          try {
+            await fetch(`${base}/escrow/ingest-tx`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ txHash: lastJoinInfo.txHash, challengeId: Number(id) }),
+            });
+          } catch {}
+        }
+
+        // Build claim calldata and open wallet (value=0)
+        try {
+          const selector = "0x68d9f3a2"; // claimToRace(uint256)
+          const raceHex = BigInt(raceId).toString(16).padStart(64, "0");
+          const data = `${selector}${raceHex}`;
+          const to = "0x9d000e23c55f79142C29476c6313763476d4f7A0";
+          const link = `https://go.cb-w.com/ethereum?to=${to}&value=0&data=${data}&chainId=84532`;
+          const can = await Linking.canOpenURL(link);
+          if (can) await Linking.openURL(link);
+        } catch {}
+
+        // Poll for on-chain Joined and then sync Supabase like the join flow does
+        try {
+          const deadline = Date.now() + 60000; // up to 60s
+          let found: string | null = null;
+          while (Date.now() < deadline) {
+            try {
+              const r = await fetch(`${base}/escrow/find-join/${raceId}/${addr}`);
+              if (r.ok) {
+                const j = await r.json();
+                if (j?.txHash) { found = String(j.txHash); break; }
+              }
+            } catch {}
+            await new Promise((res) => setTimeout(res, 5000));
+          }
+          if (found) {
+            try {
+              const attendee = await ApiService.joinChallengeAsCurrentUser(Number(id), challenge!.stake);
+              try {
+                await ApiService.updateParticipant(attendee.id as number, {
+                  stake_tx_hash: found,
+                  onchain_joined: true,
+                } as any);
+              } catch {}
+              setStakeTxHash(found);
+              setHasOnchainJoined(true);
+              // Mark joined locally and refresh challenge data
+              try {
+                joinChallenge(id);
+                const refreshed = await ApiService.getChallengeById(id);
+                if (refreshed) setChallenge(refreshed);
+              } catch {}
+            } catch {}
+          }
+        } catch {}
+      } finally {
+        setAutoClaiming(false);
+      }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, challenge?.id, currentProfile?.wallet_address]);
 
   const challengeStatus = getChallengeStatus(id || "");
   const isJoined = challengeStatus.status !== "not-joined";
@@ -195,6 +343,20 @@ export default function ChallengeDetail() {
     : false;
 
   const [joining, setJoining] = useState(false);
+  const [stakingState, setStakingState] = useState<
+    "idle" | "awaiting_wallet" | "awaiting_chain" | "confirmed"
+  >("idle");
+  const [stakeTxHash, setStakeTxHash] = useState<string | null>(null);
+  const [hasOnchainJoined, setHasOnchainJoined] = useState(false);
+  const [refreshLoading, setRefreshLoading] = useState(false);
+  const [consumeLoading, setConsumeLoading] = useState(false);
+  const [lastJoinInfo, setLastJoinInfo] = useState<{
+    to?: string;
+    valueWei?: string;
+    raceId?: number;
+    txHash?: string;
+  } | null>(null);
+  const [autoClaiming, setAutoClaiming] = useState(false);
 
   const handleJoinChallenge = async () => {
     if (isExpired) {
@@ -218,14 +380,135 @@ export default function ChallengeDetail() {
 
     try {
       setJoining(true);
-      // Create attendee record in Supabase for the current user
-      await ApiService.joinChallengeAsCurrentUser(Number(id), challenge.stake);
-      // Update local state
-      joinChallenge(id);
-      // Refresh challenge from API to reflect new participants list/count
-      const refreshed = await ApiService.getChallengeById(id);
-      if (refreshed) setChallenge(refreshed);
-      Alert.alert("Joined", "You have joined this challenge!");
+
+      // Require a wallet on profile for staking
+      const addr = String(
+        (currentProfile?.wallet_address as string) || "",
+      ).trim();
+      if (!addr) {
+        Alert.alert(
+          "Wallet required",
+          "Please add a wallet address to your profile before staking.",
+        );
+        return;
+      }
+
+      // 1) Get on-chain calldata first
+      const joinData = await EscrowService.getJoinCalldataByChallengeId(
+        Number(id),
+      );
+      if (joinData.value === "0x0" || joinData.value === "0x") {
+        Alert.alert(
+          "On-chain race not ready",
+          "The on-chain race is not configured yet. Please try again later.",
+        );
+        return;
+      }
+
+      // 2) Try to open a wallet link; abort if we cannot
+      let openedWallet = false;
+      setStakingState("awaiting_wallet");
+      // Log deeplinks for debugging
+      try {
+        console.log("[join] coinbaseWalletUrl:", joinData.coinbaseWalletUrl);
+        console.log("[join] eip681:", joinData.eip681);
+      } catch {}
+      if (joinData.coinbaseWalletUrl) {
+        const canOpenCbw = await Linking.canOpenURL(joinData.coinbaseWalletUrl);
+        if (canOpenCbw) {
+          await Linking.openURL(joinData.coinbaseWalletUrl);
+          openedWallet = true;
+        }
+      }
+      if (!openedWallet && joinData.eip681) {
+        const canOpen681 = await Linking.canOpenURL(joinData.eip681);
+        if (canOpen681) {
+          await Linking.openURL(joinData.eip681);
+          openedWallet = true;
+        }
+      }
+      if (!openedWallet) {
+        Alert.alert(
+          "Wallet not available",
+          `We couldn't open your wallet to complete staking.\nCoinbase URL: ${joinData.coinbaseWalletUrl || "(none)"}\nEIP-681: ${joinData.eip681 || "(none)"}`,
+        );
+        return;
+      }
+
+      // 3) After handing off to wallet, wait for on-chain confirmation; do NOT create attendee yet
+      setStakingState("awaiting_chain");
+
+      // 4) Background: try to capture the on-chain tx hash if we have a user address configured
+      (async () => {
+        try {
+          const addr = String(
+            (currentProfile?.wallet_address as string) || "",
+          ).trim();
+          const base = (TOKEN_API_URL || "").replace(/\/$/, "");
+          const rId = (joinData as any)?.raceId as number | undefined;
+          if (!addr || !base || !rId) return;
+          const deadline = Date.now() + 60000; // up to 60s
+          let found: string | null = null;
+          while (Date.now() < deadline) {
+            try {
+              const res = await fetch(
+                `${base}/escrow/find-join/${rId}/${addr}`,
+              );
+              if (res.ok) {
+                const j = await res.json();
+                if (j?.txHash) {
+                  found = String(j.txHash);
+                  break;
+                }
+              }
+            } catch {}
+            await new Promise((res) => setTimeout(res, 5000));
+          }
+          if (found) {
+            try {
+              // Create attendee now that on-chain join is confirmed
+              const attendee = await ApiService.joinChallengeAsCurrentUser(
+                Number(id),
+                challenge!.stake,
+              );
+              try {
+                await ApiService.updateParticipant(
+                  attendee.id as number,
+                  {
+                    stake_tx_hash: found,
+                    onchain_joined: true,
+                  } as any,
+                );
+              } catch {}
+              setStakeTxHash(found);
+              setStakingState("confirmed");
+              setHasOnchainJoined(true);
+              // Now mark joined locally and refresh the challenge data
+              try {
+                joinChallenge(id);
+                const refreshed = await ApiService.getChallengeById(id);
+                if (refreshed) setChallenge(refreshed);
+              } catch {}
+            } catch (e) {
+              console.warn(
+                "Failed to persist attendee after on-chain join:",
+                (e as any)?.message || String(e),
+              );
+            }
+          }
+        } catch (e) {
+          console.warn(
+            "join tx poll skipped:",
+            (e as any)?.message || String(e),
+          );
+        }
+      })();
+
+      // Inform user to proceed in wallet; we'll only mark joined after on-chain confirmation
+      Alert.alert(
+        "Proceed in your wallet",
+        "Approve the transaction in your wallet to complete on-chain staking. Recording will be enabled once confirmed.",
+      );
     } catch (e: any) {
       const msg = String(e?.message || "");
       if (
@@ -246,7 +529,333 @@ export default function ChallengeDetail() {
     }
   };
 
+  async function handleRefreshOnchain() {
+    if (refreshLoading) return;
+    setRefreshLoading(true);
+    try {
+      if (!id || !challenge) return;
+      const addr = String(
+        (currentProfile?.wallet_address as string) || "",
+      ).trim();
+      if (!addr) {
+        Alert.alert("Wallet required", "Add a wallet on your profile first.");
+        return;
+      }
+      const joinData = await EscrowService.getJoinCalldataByChallengeId(
+        Number(id),
+      );
+      const base = (TOKEN_API_URL || "").replace(/\/$/, "");
+      const rId = (joinData as any)?.raceId as number | undefined;
+      if (!base || !rId) return;
+
+      // Try to find tx hash first
+      let found: string | null = null;
+      try {
+        const res = await fetch(`${base}/escrow/find-join/${rId}/${addr}`);
+        if (res.ok) {
+          const j = await res.json();
+          if (j?.txHash) found = String(j.txHash);
+        }
+      } catch {}
+
+      if (found) {
+        // Persist attendee and mark joined
+        try {
+          const attendee = await ApiService.joinChallengeAsCurrentUser(
+            Number(id),
+            challenge.stake,
+          );
+          try {
+            await ApiService.updateParticipant(
+              attendee.id as number,
+              {
+                stake_tx_hash: found,
+                onchain_joined: true,
+              } as any,
+            );
+          } catch {}
+          setStakeTxHash(found);
+          setHasOnchainJoined(true);
+          setStakingState("confirmed");
+          joinChallenge(id);
+          const refreshed = await ApiService.getChallengeById(id);
+          if (refreshed) setChallenge(refreshed);
+          Alert.alert("Confirmed", "On-chain stake detected and saved.");
+          return;
+        } catch (e) {
+          console.warn(
+            "refresh persist attendee failed:",
+            (e as any)?.message || String(e),
+          );
+        }
+      }
+
+      // Fallback: hasJoined flag
+      const hj = await fetch(`${base}/escrow/hasJoined/${rId}/${addr}`);
+      if (hj.ok) {
+        const j = await hj.json();
+        if (j?.joined) {
+          setHasOnchainJoined(true);
+          // Persist attendee with joined flag if not present
+          try {
+            const attendee = await ApiService.joinChallengeAsCurrentUser(
+              Number(id),
+              challenge.stake,
+            );
+            try {
+              await ApiService.updateParticipant(
+                attendee.id as number,
+                {
+                  onchain_joined: true,
+                } as any,
+              );
+            } catch {}
+          } catch {}
+          Alert.alert("Confirmed", "On-chain join detected.");
+          return;
+        }
+      }
+
+      Alert.alert(
+        "Not found",
+        "No on-chain stake detected yet. Try again in a few seconds.",
+      );
+    } catch (e) {
+      Alert.alert(
+        "Error",
+        (e as any)?.message || "Failed to refresh on-chain status",
+      );
+    } finally {
+      setRefreshLoading(false);
+    }
+  }
+
+  // Explicit user-triggered consume credits
+  async function handleConsumeCredits() {
+    if (consumeLoading) return;
+    setConsumeLoading(true);
+    try {
+      console.log("[consumeCredits] start", { challengeId: id });
+      if (!id || !challenge) {
+        console.log("[consumeCredits] missing id or challenge", { id, hasChallenge: !!challenge });
+        return;
+      }
+      const addr = String((currentProfile?.wallet_address as string) || "").trim();
+      console.log("[consumeCredits] wallet addr", addr);
+      if (!addr) {
+        Alert.alert("Wallet required", "Add a wallet on your profile first.");
+        return;
+      }
+      const base = (TOKEN_API_URL || "").replace(/\/$/, "");
+      console.log("[consumeCredits] base", { base, tokenApiUrl: TOKEN_API_URL });
+      if (!base) {
+        console.log("[consumeCredits] abort: missing base TOKEN_API_URL");
+        return;
+      }
+      let rId: number | undefined = undefined;
+      let immediateTxHash: string | null = null;
+
+      // First try API-only consume via backend operator
+      let needWalletClaim = true;
+      let backendTried = true;
+      try {
+        const url = `${base}/escrow/consume-credits`;
+        const payload = { user: addr, challengeId: Number(id) } as const;
+        console.log("[consumeCredits] POST", url, payload);
+        const resp = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        console.log("[consumeCredits] resp status", resp.status);
+        if (resp.ok) {
+          const j = await resp.json();
+          console.log("[consumeCredits] resp json", j);
+          if (j?.joined) {
+            needWalletClaim = false;
+            // Capture raceId from backend if provided (allow 0)
+            if (typeof j.raceId === "number") {
+              rId = j.raceId as number;
+            }
+            // Capture tx hash if provided to skip polling
+            if (typeof j.claimTxHash === "string") {
+              immediateTxHash = j.claimTxHash;
+            } else if (typeof j.txHash === "string") {
+              immediateTxHash = j.txHash;
+            }
+            Alert.alert("Credits attributed", "Your previous transfer was matched to this race. Waiting for confirmation…");
+          } else if (j?.action === "call_claimToRace") {
+            needWalletClaim = true;
+          } else {
+            needWalletClaim = true;
+          }
+        } else {
+          const txt = await resp.text().catch(() => "");
+          console.log("[consumeCredits] resp not ok", { status: resp.status, body: txt });
+          Alert.alert("Consume API failed", `Status ${resp.status}. Will try alternate attribution. ${txt?.slice(0,120) || ""}`);
+        }
+      } catch (e) {
+        backendTried = true;
+        console.log("[consumeCredits] consume-credits error", e);
+        Alert.alert("Consume API error", "Trying alternate attribution.");
+      }
+
+      // If still not joined, try ingestion by txHash (if provided)
+      if (needWalletClaim && lastJoinInfo?.txHash) {
+        try {
+          const url = `${base}/escrow/ingest-tx`;
+          const payload = { txHash: lastJoinInfo.txHash, challengeId: Number(id) } as const;
+          console.log("[consumeCredits] POST", url, payload);
+          const resp = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          backendTried = true;
+          console.log("[consumeCredits] ingest resp status", resp.status);
+          if (resp.ok) {
+            const j = await resp.json();
+            console.log("[consumeCredits] ingest resp json", j);
+            if (j?.joined) {
+              needWalletClaim = false;
+              Alert.alert("Credits attributed", "Your previous transfer was matched to this race. Waiting for confirmation…");
+            } else if (j?.action === "call_claimToRace") {
+              needWalletClaim = true;
+            } else {
+              needWalletClaim = true;
+            }
+          } else {
+            const txt = await resp.text().catch(() => "");
+            console.log("[consumeCredits] ingest not ok", { status: resp.status, body: txt });
+            Alert.alert("Ingest API failed", `Status ${resp.status}. Will try wallet claim. ${txt?.slice(0,120) || ""}`);
+          }
+        } catch (e) {
+          backendTried = true;
+          console.log("[consumeCredits] ingest error", e);
+          Alert.alert("Ingest error", "Falling back to wallet claim.");
+        }
+      } else if (needWalletClaim) {
+        console.log("[consumeCredits] skipping ingest: no txHash available");
+      }
+
+      // If still need wallet claim, open wallet with claim calldata (value 0)
+      if (needWalletClaim) {
+        try {
+          // Lazy-load raceId only when building wallet claim fallback
+          if (rId == null) {
+            console.log("[consumeCredits] fetching join calldata for wallet fallback");
+            const joinData2 = await EscrowService.getJoinCalldataByChallengeId(Number(id));
+            rId = (joinData2 as any)?.raceId as number | undefined;
+            console.log("[consumeCredits] fetched rId", rId);
+          }
+          if (rId == null) {
+            Alert.alert("Claim not available", "Race ID is not ready yet. Please try again shortly.");
+            return;
+          }
+          const selector = "0x68d9f3a2";
+          const raceHex = BigInt(rId).toString(16).padStart(64, "0");
+          const data = `${selector}${raceHex}`;
+          const to = "0x9d000e23c55f79142C29476c6313763476d4f7A0";
+          const link = `https://go.cb-w.com/ethereum?to=${to}\u0026value=0\u0026data=${data}\u0026chainId=84532`;
+          console.log("[consumeCredits] opening wallet link", link);
+          // Try opening without canOpenURL to avoid false negatives
+          let opened = false;
+          try {
+            await Linking.openURL(link);
+            opened = true;
+          } catch (errOpen) {
+            console.log("[consumeCredits] openURL failed, trying canOpenURL", errOpen);
+            try {
+              const can = await Linking.canOpenURL(link);
+              console.log("[consumeCredits] canOpenURL:", can);
+              if (can) {
+                await Linking.openURL(link);
+                opened = true;
+              }
+            } catch (errCan) {
+              console.log("[consumeCredits] canOpenURL error", errCan);
+            }
+          }
+          if (!opened) {
+            Alert.alert(
+              "Open your wallet",
+              `We couldn't open your wallet automatically. Use these details to claim manually:\nTo: ${to}\nData: ${data}\nValue: 0\nChain: Base Sepolia (84532)`,
+            );
+          } else {
+            Alert.alert("Wallet opened", "Approve the 0-value claim transaction to consume your credits.");
+          }
+        } catch (e) {
+          console.log("[consumeCredits] wallet link unexpected error", e);
+          Alert.alert("Wallet link failed", "Please try again or copy the claim details manually.");
+        }
+      }
+
+      // Poll for Joined and then persist to Supabase
+      try {
+        const deadline = Date.now() + 60000;
+        let found: string | null = immediateTxHash || null;
+        let iter = 0;
+        // If we don't already have a tx hash from backend, poll by raceId if available
+        while (!found && rId != null && Date.now() < deadline) {
+          iter++;
+          try {
+            const url = `${base}/escrow/find-join/${rId}/${addr}`;
+            console.log("[consumeCredits] poll find-join", { iter, url });
+            const r = await fetch(url);
+            console.log("[consumeCredits] poll status", r.status);
+            if (r.ok) {
+              const j = await r.json();
+              console.log("[consumeCredits] poll json", j);
+              if (j?.txHash) { found = String(j.txHash); break; }
+            }
+          } catch (errPoll) {
+            console.log("[consumeCredits] poll error", errPoll);
+          }
+          await new Promise((res) => setTimeout(res, 5000));
+        }
+        if (found) {
+          console.log("[consumeCredits] join detected txHash", found);
+          try {
+            const attendee = await ApiService.joinChallengeAsCurrentUser(Number(id), challenge.stake);
+            try { await ApiService.updateParticipant(attendee.id as number, { stake_tx_hash: found, onchain_joined: true } as any); } catch {}
+            setStakeTxHash(found);
+            setHasOnchainJoined(true);
+            joinChallenge(id);
+            const refreshed = await ApiService.getChallengeById(id);
+            if (refreshed) setChallenge(refreshed);
+            Alert.alert("Credits consumed", "Your pending deposit has been applied to this race.");
+            return;
+          } catch (e) {
+            console.log("[consumeCredits] persisted join failed", e);
+            Alert.alert("Saved on-chain, but app update failed", "We detected the join on-chain, but updating your profile failed. Pull to refresh.");
+          }
+        } else {
+          console.log("[consumeCredits] no join detected after polling");
+          if (backendTried && !needWalletClaim) {
+            Alert.alert("Attribution in progress", "Please wait a few seconds and refresh on-chain status.");
+          } else {
+            Alert.alert("No on-chain join found yet", "If you approved in wallet, please wait and press Refresh on-chain status.");
+          }
+        }
+      } catch (e) {
+        console.log("[consumeCredits] polling error", e);
+        Alert.alert("Error", (e as any)?.message || "Failed to consume credits");
+      }
+    } finally {
+      setConsumeLoading(false);
+      console.log("[consumeCredits] end");
+    }
+  }
+
   const handleStartRecording = () => {
+    // Gate recording strictly on on-chain hasJoined
+    if (!hasOnchainJoined) {
+      Alert.alert(
+        "Stake required",
+        "You must complete the on-chain stake from your profile wallet before recording.",
+      );
+      return;
+    }
     if (id) {
       startChallengeRun(id);
     }
@@ -432,11 +1041,15 @@ export default function ChallengeDetail() {
                     onPress={handleJoinChallenge}
                     disabled={
                       joining ||
+                      !currentProfile?.wallet_address ||
                       challenge.participants >= challenge.maxParticipants
                     }
                     style={[
                       styles.joinButton,
-                      (joining || challenge.participants >= challenge.maxParticipants) ? { opacity: 0.7 } : null,
+                      joining ||
+                      challenge.participants >= challenge.maxParticipants
+                        ? { opacity: 0.7 }
+                        : null,
                     ]}
                   >
                     <Text style={styles.joinButtonText}>
@@ -451,6 +1064,99 @@ export default function ChallengeDetail() {
                     Winner takes all! Complete the challenge with the best time
                     to win the entire prize pool.
                   </Text>
+                  {!currentProfile?.wallet_address && (
+                    <Text style={styles.awaitingText}>
+                      Add a wallet to your profile to stake and join.
+                    </Text>
+                  )}
+                  {stakingState !== "idle" && (
+                    <View style={{ marginTop: 8 }}>
+                      {stakingState === "awaiting_wallet" && (
+                        <Text style={styles.awaitingText}>Opening wallet…</Text>
+                      )}
+                      {stakingState === "awaiting_chain" && (
+                        <Text style={styles.awaitingText}>
+                          Awaiting on-chain confirmation…
+                        </Text>
+                      )}
+                      {stakingState === "confirmed" && (
+                        <Text style={styles.confirmedText}>
+                          ✅ On-chain stake confirmed
+                          {stakeTxHash ? ` (${shorten(stakeTxHash)})` : ""}
+                        </Text>
+                      )}
+                    </View>
+                  )}
+                  {!hasOnchainJoined && (
+                    <View style={{ marginTop: 8, gap: 8, alignItems: "center" }}>
+                      <Pressable
+                        onPress={handleRefreshOnchain}
+                        style={[styles.refreshBtn, refreshLoading && { opacity: 0.7 }]}
+                        disabled={refreshLoading}
+                      >
+                        {refreshLoading ? (
+                          <ActivityIndicator size="small" color={colors.text} />
+                        ) : (
+                          <Text style={styles.refreshBtnText}>Refresh on-chain status</Text>
+                        )}
+                      </Pressable>
+                      <Pressable
+                        onPress={handleConsumeCredits}
+                        style={[styles.refreshBtn, consumeLoading && { opacity: 0.7 }]}
+                        disabled={consumeLoading}
+                      >
+                        {consumeLoading ? (
+                          <ActivityIndicator size="small" color={colors.text} />
+                        ) : (
+                          <Text style={styles.refreshBtnText}>Consume my credits</Text>
+                        )}
+                      </Pressable>
+                    </View>
+                  )}
+
+                  {hasOnchainJoined && (
+                    <Link
+                      href={{ pathname: "/recordRun", params: { id: challenge.id } }}
+                      asChild
+                    >
+                      <Pressable style={[styles.recordButton, { marginTop: 10 }]} onPress={handleStartRecording}>
+                        <Ionicons name="play" size={16} color="white" style={{ marginRight: 8 }} />
+                        <Text style={styles.recordButtonText}>Start Recording</Text>
+                      </Pressable>
+                    </Link>
+                  )}
+                  {lastJoinInfo?.to && lastJoinInfo?.valueWei && (
+                    <View style={styles.copyRowContainer}>
+                      <View style={styles.copyRow}>
+                        <Text style={styles.copyLabel}>Send to</Text>
+                        <Pressable
+                          onPress={async () => {
+                            await Clipboard.setStringAsync(lastJoinInfo!.to!);
+                            Alert.alert("Copied", "Escrow address copied");
+                          }}
+                        >
+                          <Text style={styles.copyValue}>
+                            {shorten(lastJoinInfo!.to!)}
+                          </Text>
+                        </Pressable>
+                      </View>
+                      <View style={styles.copyRow}>
+                        <Text style={styles.copyLabel}>Amount</Text>
+                        <Pressable
+                          onPress={async () => {
+                            await Clipboard.setStringAsync(
+                              lastJoinInfo!.valueWei!,
+                            );
+                            Alert.alert("Copied", "Amount (wei) copied");
+                          }}
+                        >
+                          <Text style={styles.copyValue}>
+                            {formatEth(lastJoinInfo!.valueWei!)} ETH
+                          </Text>
+                        </Pressable>
+                      </View>
+                    </View>
+                  )}
                 </CardContent>
               </Card>
             )
@@ -603,6 +1309,24 @@ export default function ChallengeDetail() {
                   Your run is currently in progress. Complete your recording to
                   submit your result!
                 </Text>
+                {!hasOnchainJoined && (
+                  <Pressable
+                    onPress={handleRefreshOnchain}
+                    style={[
+                      styles.refreshBtn,
+                      refreshLoading && { opacity: 0.7 },
+                    ]}
+                    disabled={refreshLoading}
+                  >
+                    {refreshLoading ? (
+                      <ActivityIndicator size="small" color={colors.text} />
+                    ) : (
+                      <Text style={styles.refreshBtnText}>
+                        Refresh on-chain status
+                      </Text>
+                    )}
+                  </Pressable>
+                )}
                 <Link
                   href={{
                     pathname: "/recordRun",
@@ -612,13 +1336,13 @@ export default function ChallengeDetail() {
                 >
                   <Pressable style={styles.continueButton}>
                     <Ionicons
-                      name="arrow-forward"
+                      name="play"
                       size={16}
                       color="white"
                       style={{ marginRight: 8 }}
                     />
                     <Text style={styles.continueButtonText}>
-                      Continue Recording
+                      Start Recording
                     </Text>
                   </Pressable>
                 </Link>
@@ -627,13 +1351,24 @@ export default function ChallengeDetail() {
           ) : (
             <Card style={{ ...styles.cardSpacing, ...styles.joinedCard }}>
               <CardHeader
-                title="Ready to Run!"
-                icon={<Ionicons name="trophy" size={18} color="#22c55e" />}
+                title={
+                  hasOnchainJoined
+                    ? "Ready to Run!"
+                    : "Awaiting Stake Confirmation"
+                }
+                icon={
+                  <Ionicons
+                    name={hasOnchainJoined ? "trophy" : "time"}
+                    size={18}
+                    color={hasOnchainJoined ? "#22c55e" : "#f59e0b"}
+                  />
+                }
               />
               <CardContent>
                 <Text style={styles.joinedText}>
-                  You've successfully joined this challenge. Complete your run
-                  before the deadline to earn rewards!
+                  {hasOnchainJoined
+                    ? "You've successfully joined this challenge on chain. Complete your run before the deadline to earn rewards!"
+                    : "Your on-chain stake has not been detected yet. Please approve the transaction in your wallet, then return here."}
                 </Text>
                 <Link
                   href={{
@@ -643,8 +1378,12 @@ export default function ChallengeDetail() {
                   asChild
                 >
                   <Pressable
-                    style={styles.recordButton}
+                    style={[
+                      styles.recordButton,
+                      !hasOnchainJoined && { opacity: 0.6 },
+                    ]}
                     onPress={handleStartRecording}
+                    disabled={!hasOnchainJoined}
                   >
                     <Ionicons
                       name="play"
@@ -1127,7 +1866,7 @@ const styles = StyleSheet.create({
     color: "#d97706",
   },
   continueButton: {
-    backgroundColor: "#f59e0b",
+    backgroundColor: "#22c55e",
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
     borderRadius: borderRadius.lg,
@@ -1355,4 +2094,77 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "white",
   },
+  awaitingText: {
+    ...typography.meta,
+    color: colors.textMuted,
+  },
+  confirmedText: {
+    ...typography.meta,
+    color: "#16a34a",
+    fontWeight: "600",
+  },
+  refreshBtn: {
+    marginTop: spacing.sm,
+    alignSelf: "center",
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  refreshBtnText: {
+    ...typography.meta,
+    fontWeight: "600",
+    color: colors.text,
+  },
+  copyRowContainer: {
+    marginTop: spacing.sm,
+    gap: spacing.xs,
+  },
+  copyRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 10,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  copyLabel: {
+    ...typography.meta,
+    color: colors.textMuted,
+  },
+  copyValue: {
+    ...typography.body,
+    fontWeight: "600",
+    color: colors.text,
+  },
 });
+
+function shorten(s: string, size = 6) {
+  if (!s) return s;
+  if (s.length <= size * 2) return s;
+  return `${s.slice(0, size)}…${s.slice(-size)}`;
+}
+
+function formatEth(wei: string): string {
+  try {
+    const w = BigInt(wei);
+    const ether = Number(w) / 1e18;
+    // Avoid scientific notation for small amounts
+    return ether.toLocaleString(undefined, { maximumFractionDigits: 18 });
+  } catch {
+    try {
+      const w = BigInt(
+        wei.startsWith("0x") ? wei : `0x${BigInt(wei).toString(16)}`,
+      );
+      const ether = Number(w) / 1e18;
+      return ether.toLocaleString(undefined, { maximumFractionDigits: 18 });
+    } catch {
+      return wei;
+    }
+  }
+}

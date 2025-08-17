@@ -1,6 +1,7 @@
 import supabase from "./supabaseService";
 import { Challenge, Participant } from "../constants/types";
 import { Tables, TablesInsert, TablesUpdate } from "../database.types";
+import { TOKEN_API_URL } from "../app/config";
 
 export interface ChallengeCreateRequest extends TablesInsert<"challenges"> {
   // Add optional polyline to create track along with challenge
@@ -317,7 +318,55 @@ export class ApiService {
 
     const challengeId = challengeResult.id;
 
-    // Do NOT auto-join the creator; they must explicitly stake & join
+    // Fastest route: create on-chain race with fixed test stake and map it
+    try {
+      const base = (TOKEN_API_URL || "").replace(/\/$/, "");
+      if (!base) throw new Error("Missing token API base URL");
+
+      // 0.001 ETH in wei
+      const stakeWei = "1000000000000000";
+      const start = new Date(challengeFields.start_date as any);
+      const end = new Date(challengeFields.end_date as any);
+      const joinWindowSeconds = Math.max(3600, Math.floor((end.getTime() - start.getTime()) / 1000));
+
+      const createRes = await fetch(`${base}/escrow/create`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stakeWei, joinWindowSeconds }),
+      });
+      const createJson = await createRes.json().catch(() => ({}));
+      if (!createRes.ok) {
+        console.warn("On-chain race create failed:", createJson);
+      } else if (createJson?.raceId != null) {
+        // Map DB challenge to on-chain raceId (backend map)
+        const mapRes = await fetch(`${base}/escrow/map`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ challengeId, raceId: createJson.raceId }),
+        });
+        if (!mapRes.ok) {
+          const txt = await mapRes.text();
+          console.warn("Map challenge->race failed:", txt);
+        }
+        // Also store onchain_race_id and onchain_create_tx_hash in challenges if columns exist
+        try {
+          const updates: any = { onchain_race_id: createJson.raceId };
+          if (createJson?.txHash) {
+            updates.onchain_create_tx_hash = createJson.txHash;
+          }
+          await supabase
+            .from("challenges")
+            .update(updates)
+            .eq("id", challengeId);
+        } catch (e) {
+          console.warn("on-chain create fields update skipped:", (e as any)?.message || String(e));
+        }
+      }
+    } catch (e) {
+      console.warn("On-chain setup skipped:", (e as any)?.message || String(e));
+    }
+
+    // Do NOT auto-join the creator; they must explicitly stake \u0026 join
 
     // Insert track coordinates if provided
     if (polyline) {

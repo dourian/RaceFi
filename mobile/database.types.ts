@@ -23,9 +23,12 @@ export type Database = {
           elevation_gained: number | null;
           end_time: string | null;
           id: number;
+          onchain_joined: boolean | null;
+          payout_tx_hash: string | null;
           profile_id: number | null;
           stake_amount: number;
           stake_transaction_hash: string | null;
+          stake_tx_hash: string | null;
           start_time: string | null;
           status: Database["public"]["Enums"]["participant_status"] | null;
           updated_at: string | null;
@@ -38,9 +41,12 @@ export type Database = {
           elevation_gained?: number | null;
           end_time?: string | null;
           id?: number;
+          onchain_joined?: boolean | null;
+          payout_tx_hash?: string | null;
           profile_id?: number | null;
           stake_amount: number;
           stake_transaction_hash?: string | null;
+          stake_tx_hash?: string | null;
           start_time?: string | null;
           status?: Database["public"]["Enums"]["participant_status"] | null;
           updated_at?: string | null;
@@ -53,9 +59,12 @@ export type Database = {
           elevation_gained?: number | null;
           end_time?: string | null;
           id?: number;
+          onchain_joined?: boolean | null;
+          payout_tx_hash?: string | null;
           profile_id?: number | null;
           stake_amount?: number;
           stake_transaction_hash?: string | null;
+          stake_tx_hash?: string | null;
           start_time?: string | null;
           status?: Database["public"]["Enums"]["participant_status"] | null;
           updated_at?: string | null;
@@ -74,13 +83,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: "profiles";
             referencedColumns: ["id"];
-          }
+          },
         ];
       };
       challenges: {
         Row: {
           created_at: string | null;
-          created_by_profile_id: string | null;
+          created_by_profile_id: number | null;
           description: string | null;
           difficulty: Database["public"]["Enums"]["difficulty_level"];
           distance_km: number;
@@ -91,12 +100,14 @@ export type Database = {
           location: string;
           max_participants: number;
           name: string;
+          onchain_race_id: number | null;
           stake: number;
           start_date: string;
           updated_at: string | null;
         };
         Insert: {
           created_at?: string | null;
+          created_by_profile_id?: number | null;
           description?: string | null;
           difficulty: Database["public"]["Enums"]["difficulty_level"];
           distance_km: number;
@@ -107,6 +118,7 @@ export type Database = {
           location: string;
           max_participants: number;
           name: string;
+          onchain_race_id?: number | null;
           stake: number;
           start_date: string;
           updated_at?: string | null;
@@ -124,19 +136,12 @@ export type Database = {
           location?: string;
           max_participants?: number;
           name?: string;
+          onchain_race_id?: number | null;
           stake?: number;
           start_date?: string;
           updated_at?: string | null;
         };
-        Relationships: [
-          {
-            foreignKeyName: "challenges_created_by_profile_id_fkey";
-            columns: ["created_by_profile_id"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
-          }
-        ];
+        Relationships: [];
       };
       profiles: {
         Row: {
@@ -148,6 +153,7 @@ export type Database = {
           last_name: string | null;
           updated_at: string | null;
           user_id: string | null;
+          wallet_address: string | null;
         };
         Insert: {
           avatar_url?: string | null;
@@ -158,6 +164,7 @@ export type Database = {
           last_name?: string | null;
           updated_at?: string | null;
           user_id?: string | null;
+          wallet_address?: string | null;
         };
         Update: {
           avatar_url?: string | null;
@@ -168,6 +175,7 @@ export type Database = {
           last_name?: string | null;
           updated_at?: string | null;
           user_id?: string | null;
+          wallet_address?: string | null;
         };
         Relationships: [];
       };
@@ -234,7 +242,7 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: "challenges";
             referencedColumns: ["id"];
-          }
+          },
         ];
       };
       tracks: {
@@ -266,7 +274,7 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: "challenges";
             referencedColumns: ["id"];
-          }
+          },
         ];
       };
     };
@@ -302,7 +310,7 @@ export type Tables<
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals;
 }
@@ -313,14 +321,14 @@ export type Tables<
     ? R
     : never
   : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
-      DefaultSchema["Views"])
-  ? (DefaultSchema["Tables"] &
-      DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
-      Row: infer R;
-    }
-    ? R
-    : never
-  : never;
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R;
+      }
+      ? R
+      : never
+    : never;
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
@@ -330,7 +338,7 @@ export type TablesInsert<
     schema: keyof DatabaseWithoutInternals;
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals;
 }
@@ -340,12 +348,12 @@ export type TablesInsert<
     ? I
     : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-      Insert: infer I;
-    }
-    ? I
-    : never
-  : never;
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I;
+      }
+      ? I
+      : never
+    : never;
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
@@ -355,7 +363,7 @@ export type TablesUpdate<
     schema: keyof DatabaseWithoutInternals;
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals;
 }
@@ -365,12 +373,12 @@ export type TablesUpdate<
     ? U
     : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-      Update: infer U;
-    }
-    ? U
-    : never
-  : never;
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U;
+      }
+      ? U
+      : never
+    : never;
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
@@ -380,14 +388,14 @@ export type Enums<
     schema: keyof DatabaseWithoutInternals;
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never
+    : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals;
 }
   ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
-  ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
-  : never;
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never;
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
@@ -397,14 +405,14 @@ export type CompositeTypes<
     schema: keyof DatabaseWithoutInternals;
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never
+    : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals;
 }
   ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-  ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-  : never;
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never;
 
 export const Constants = {
   public: {
