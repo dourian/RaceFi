@@ -483,6 +483,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+    paddingTop: spacing.xl,
   },
   header: {
     paddingHorizontal: spacing.lg,
@@ -549,6 +550,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#d1d5db", // Light gray border
     overflow: "hidden",
+    ...shadows.medium,
   },
   card: {
     backgroundColor: colors.surface,
@@ -557,7 +559,7 @@ const styles = StyleSheet.create({
   },
   routePreviewContainer: {
     width: "100%",
-    height: 120,
+    height: 160,
   },
   routePreview: {
     width: "100%",
@@ -566,6 +568,7 @@ const styles = StyleSheet.create({
   },
   challengeInfo: {
     padding: spacing.lg,
+    gap: spacing.sm,
   },
   headerRow: {
     flexDirection: "row",
@@ -575,12 +578,13 @@ const styles = StyleSheet.create({
   },
   titleContainer: {
     flex: 1,
+    gap: spacing.xs,
   },
   cardTitle: {
     ...typography.h2,
     fontSize: 18,
     fontWeight: "bold",
-    marginBottom: spacing.xs,
+    marginBottom: spacing.sm,
   },
   locationRow: {
     flexDirection: "row",
@@ -589,7 +593,7 @@ const styles = StyleSheet.create({
   },
   location: {
     ...typography.meta,
-    fontSize: 12,
+    fontSize: 14,
   },
   expiryRow: {
     flexDirection: "row",
@@ -598,8 +602,9 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   expiryText: {
-    fontSize: 12,
-    fontWeight: "500",
+    ...typography.meta,
+    fontSize: 13,
+    fontWeight: "600",
   },
   expiryTextUrgent: {
     fontWeight: "600",
@@ -621,7 +626,7 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
     paddingVertical: spacing.sm,
     backgroundColor: colors.background,
     borderRadius: 8,
@@ -659,7 +664,7 @@ const styles = StyleSheet.create({
     color: "#f59e0b",
   },
   stake: {
-    fontSize: 12,
+    fontSize: 14,
     color: colors.textMuted,
     fontWeight: "500",
   },
@@ -669,7 +674,7 @@ const styles = StyleSheet.create({
   listContent: {
     paddingHorizontal: spacing.lg,
     paddingTop: 0,
-    paddingBottom: spacing.xl,
+    paddingBottom: 120,
     gap: spacing.xl,
   },
   centerContainer: {

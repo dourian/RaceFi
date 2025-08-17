@@ -3,7 +3,7 @@ export const colors = {
   surface: "#ffffff",
   text: "#242428",
   textMuted: "#9095AA",
-  accent: "#fc5200", // Strava-like orange (highlights)
+  accent: "#f97316", // Strava-like orange (highlights)
   accentStrong: "#e64a00", // Darker for primary buttons
   border: "#e6e6ea", // Light gray border
 };
@@ -53,6 +53,13 @@ export const shadows = {
   medium: {
     shadowColor: "#000",
     shadowOpacity: 0.1,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
+  nav: {
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
     elevation: 4,
