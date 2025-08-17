@@ -103,6 +103,61 @@ app.post("/onramp/session", async (req, res) => {
   }
 });
 
+// Proxy: CDP List EVM token balances
+// GET /cdp/evm/token-balances/:network/:address?pageSize=&pageToken=
+app.get("/cdp/evm/token-balances/:network/:address", async (req, res) => {
+  try {
+    const { network, address } = req.params;
+    const { pageSize, pageToken } = req.query;
+
+    if (!KEY_NAME || !KEY_SECRET) {
+      return res.status(500).json({
+        error: "server_config_error",
+        detail: "Missing KEY_NAME/KEY_SECRET",
+      });
+    }
+
+    const requestMethod = "GET";
+    const requestHost = "api.cdp.coinbase.com";
+
+    const qs = buildQuery({ pageSize, pageToken });
+    const requestPath = `/platform/v2/evm/token-balances/${network}/${address}${qs}`;
+
+    const jwt = await generateJwt({
+      apiKeyId: KEY_NAME,
+      apiKeySecret: KEY_SECRET,
+      requestMethod,
+      requestHost,
+      requestPath,
+      expiresIn: 120,
+    });
+
+    const url = `https://${requestHost}${requestPath}`;
+    const r = await fetch(url, {
+      method: requestMethod,
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${jwt}`,
+      },
+    });
+
+    const text = await r.text();
+    res.status(r.status).type("application/json").send(text);
+  } catch (e) {
+    console.error("CDP balances proxy error", e);
+    res.status(500).json({ error: "server_error", detail: String(e) });
+  }
+});
+
+function buildQuery(params) {
+  const u = new URLSearchParams();
+  Object.entries(params || {}).forEach(([k, v]) => {
+    if (v !== undefined && v !== null && String(v) !== "") u.set(k, String(v));
+  });
+  const s = u.toString();
+  return s ? `?${s}` : "";
+}
+
 app.listen(PORT, () => {
   console.log(`RaceFi token backend listening on http://localhost:${PORT}`);
 });

@@ -304,7 +304,7 @@ export default function CreateChallengeScreen() {
         location: formData.location.trim(),
         start_date: formData.start_date.toISOString(),
         end_date: formData.end_date.toISOString(),
-        created_by_profile_id: 1, // TODO: Get from auth context
+        // created_by_profile_id is set server-side based on auth
         polyline: routePoints.length > 0 
           ? RouteStorage.encodePolyline(routePoints)
           : formData.polyline.trim() || "c~zbFfdtgVuHbBaFlGsApJrApJ`FlGtHbBtHcB`FmGrAqJsAqJaFmGuHcB", // Default Apple Park polyline

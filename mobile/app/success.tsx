@@ -18,7 +18,7 @@ export default function SuccessScreen() {
       <Text style={styles.subtitle}>
         Your funds will arrive shortly. You can return to continue staking.
       </Text>
-      <Pressable style={styles.button} onPress={() => router.replace("/(tabs)/index") }>
+      <Pressable style={styles.button} onPress={() => router.replace("/") }>
         <Text style={styles.buttonText}>Back to Browse</Text>
       </Pressable>
     </View>

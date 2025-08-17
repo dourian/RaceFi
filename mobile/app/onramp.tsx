@@ -2,8 +2,10 @@ import React, { useCallback, useMemo, useState } from "react";
 import { View, Text, TextInput, StyleSheet, Pressable, Alert } from "react-native";
 import * as WebBrowser from "expo-web-browser";
 import { ONRAMP_CONFIG, TOKEN_API_URL } from "./config";
-import { useRouter } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import { colors, spacing, typography, borderRadius, shadows } from "./theme";
+
+const COINBASE_BLUE = "#1652F0";
 
 // Minimal local builder for Coinbase Onramp URL to avoid RN bundling issues
 function buildOnrampBuyUrl(params: {
@@ -115,7 +117,15 @@ export default function OnrampScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Buy crypto (Coinbase Onramp)</Text>
+      <Stack.Screen
+        options={{
+          title: "Buy USDC",
+          headerStyle: { backgroundColor: COINBASE_BLUE },
+          headerTintColor: "white",
+          headerTitleStyle: { color: "white" },
+        }}
+      />
+      <Text style={styles.title}>Buy USDC</Text>
       <View style={styles.card}>
         <Text style={styles.label}>Destination address</Text>
         <TextInput
@@ -198,7 +208,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   primaryButton: {
-    backgroundColor: colors.accentStrong,
+    backgroundColor: COINBASE_BLUE,
     paddingVertical: spacing.md,
     borderRadius: 10,
     alignItems: "center",

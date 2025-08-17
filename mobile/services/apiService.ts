@@ -87,7 +87,7 @@ export class ApiService {
       const { data: creators, error: creatorsErr } = await supabase
         .from("profiles")
         .select("id,first_name,last_name,avatar_url,email")
-        .in("id", creatorIdStrings);
+        .in("id", creatorIdStrings as any);
       if (creatorsErr) throw creatorsErr;
       creatorsMap = new Map(
         (creators || []).map((p: any) => {

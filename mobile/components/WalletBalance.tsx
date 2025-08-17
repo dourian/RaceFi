@@ -202,7 +202,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   buyButton: {
-    backgroundColor: colors.accentStrong,
+    backgroundColor: "#1652F0", // Coinbase blue
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.lg,
