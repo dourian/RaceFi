@@ -1,59 +1,59 @@
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { AuthWrapper } from "../auth/auth-wrapper";
-import { LocationProvider } from "../contexts/locationContext";
+import { AuthWrapper } from "../../components/auth/AuthWrapper";
+import { LocationProvider } from "../../contexts/locationContext";
+import { View } from "react-native";
+import { colors, shadows, spacing } from "../theme";
 
 export default function TabsLayout() {
   return (
     <LocationProvider>
       <AuthWrapper>
+        <View style={{ flex: 1, width: "100%", height: "100%" }}>
         <Tabs
+          initialRouteName="index"
           screenOptions={{
-            tabBarActiveTintColor: "white",
-            tabBarInactiveTintColor: "rgba(255,255,255,0.6)",
+            tabBarActiveTintColor: colors.accent,
+            tabBarInactiveTintColor: colors.textMuted,
             tabBarStyle: {
-              backgroundColor: "#e64a00",
-              borderTopColor: "#d63e00",
-              height: 60,
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+              height: 65,
+              borderRadius: 100,
+              position: "absolute",
+              bottom: 40,
+              left: 0,
+              right: 0,
+              marginHorizontal: spacing.lg,
+              backgroundColor: "rgba(255,255,255,0.97)",
+              ...shadows.nav,
             },
             tabBarLabelStyle: { display: "none" },
             headerShown: false,
           }}
         >
           <Tabs.Screen
-            name="index"
-            options={{
-              title: "Browse",
-              tabBarIcon: ({ color, size }) => (
-                <Ionicons
-                  name="compass-outline"
-                  size={size ?? 22}
-                  color={color}
-                />
-              ),
-            }}
-          />
-          <Tabs.Screen
-            name="upload"
-            options={{
-              title: "Upload",
-              tabBarIcon: ({ color, size }) => (
-                <Ionicons
-                  name="cloud-upload-outline"
-                  size={size ?? 22}
-                  color={color}
-                />
-              ),
-            }}
-          />
-          <Tabs.Screen
             name="trophies"
             options={{
               title: "Trophies",
-              tabBarIcon: ({ color, size }) => (
+              tabBarIcon: ({ color }) => (
                 <Ionicons
                   name="trophy-outline"
-                  size={size ?? 22}
+                  size={24}
+                  color={color}
+                />
+              ),
+            }}
+          />
+          <Tabs.Screen
+            name="index"
+            options={{
+              title: "Browse",
+              tabBarIcon: ({ color }) => (
+                <Ionicons
+                  name="compass-outline"
+                  size={28}
                   color={color}
                 />
               ),
@@ -63,12 +63,17 @@ export default function TabsLayout() {
             name="profile"
             options={{
               title: "Profile",
-              tabBarIcon: ({ color, size }) => (
-                <Ionicons name="person-outline" size={size ?? 22} color={color} />
+              tabBarIcon: ({ color }) => (
+                <Ionicons
+                  name="person-outline"
+                  size={24}
+                  color={color}
+                />
               ),
-            }}
-          />
-        </Tabs>
+              }}
+            />
+          </Tabs>
+        </View>
       </AuthWrapper>
     </LocationProvider>
   );

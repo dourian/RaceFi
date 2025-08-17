@@ -3,7 +3,7 @@ export const colors = {
   surface: "#ffffff",
   text: "#242428",
   textMuted: "#9095AA",
-  accent: "#fc5200", // Strava-like orange (highlights)
+  accent: "#f97316", // Strava-like orange (highlights)
   accentStrong: "#e64a00", // Darker for primary buttons
   border: "#e6e6ea", // Light gray border
 };
@@ -14,6 +14,7 @@ export const spacing = {
   md: 12,
   lg: 16,
   xl: 24,
+  xxl: 32,
 };
 
 export const borderRadius = {
@@ -25,9 +26,12 @@ export const borderRadius = {
 };
 
 export const typography = {
+  h1: { fontSize: 22, fontWeight: "800" as const, color: colors.text },
   title: { fontSize: 22, fontWeight: "800" as const, color: colors.text },
   h2: { fontSize: 18, fontWeight: "700" as const, color: colors.text },
+  h3: { fontSize: 14, fontWeight: "600" as const, color: colors.text },
   body: { fontSize: 14, color: colors.text },
+  bodyMuted: { fontSize: 14, color: colors.textMuted },
   meta: { fontSize: 12, color: colors.textMuted },
 };
 
@@ -49,6 +53,13 @@ export const shadows = {
   medium: {
     shadowColor: "#000",
     shadowOpacity: 0.1,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
+  nav: {
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
     elevation: 4,

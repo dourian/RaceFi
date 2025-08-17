@@ -4,9 +4,10 @@ import { colors, typography } from "./theme";
 import { Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { AuthProvider } from "./lib/auth-context";
-import { LocationProvider } from "./contexts/locationContext";
-import { ChallengeProvider } from "./contexts/challengeContext";
+import { AuthProvider } from "../contexts/authContext";
+import BalanceProvider from "../contexts/balanceContext";
+import ChallengeProvider from "../contexts/challengeContext";
+import { LocationProvider } from "../contexts/locationContext";
 
 function CustomBackButton() {
   const router = useRouter();
@@ -29,40 +30,40 @@ export default function RootLayout() {
   return (
     <AuthProvider>
       <LocationProvider>
-        <ChallengeProvider>
-          <StatusBar style="dark" backgroundColor={colors.background} />
-          <Stack
-            screenOptions={{
-              headerStyle: { backgroundColor: "#e64a00" },
-              headerTintColor: "white",
-              headerTitleStyle: {
-                ...typography.title,
-                fontSize: 18,
-                color: "white",
-              },
-              contentStyle: { backgroundColor: colors.background },
-              headerBackTitle: "",
-            }}
-          >
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen
-              name="challenge/[id]"
-              options={{
-                title: "Challenge",
-                headerLeft: () => <CustomBackButton />,
-                headerBackVisible: false,
+        <BalanceProvider>
+          <ChallengeProvider>
+            <StatusBar style="dark" backgroundColor={colors.background} />
+            <Stack
+              screenOptions={{
+                headerStyle: { backgroundColor: "#e64a00" },
+                headerTintColor: "white",
+                headerTitleStyle: {
+                  ...typography.title,
+                  fontSize: 18,
+                  color: "white",
+                },
+                contentStyle: { backgroundColor: colors.background },
+                headerBackTitle: "",
               }}
-            />
-            <Stack.Screen
-              name="record"
-              options={{
-                title: "Record Run",
-                headerLeft: () => <CustomBackButton />,
-                headerBackVisible: false,
-              }}
-            />
-          </Stack>
-        </ChallengeProvider>
+            >
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen
+                name="challenge/[id]"
+                options={{
+                  title: "Challenge",
+                  headerLeft: () => <CustomBackButton />,
+                  headerBackVisible: false,
+                }}
+              />
+              <Stack.Screen
+                name="recordRun"
+                options={{
+                  headerShown: false,
+                }}
+              />
+            </Stack>
+          </ChallengeProvider>
+        </BalanceProvider>
       </LocationProvider>
     </AuthProvider>
   );

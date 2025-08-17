@@ -3,12 +3,12 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Text, StyleSheet, Pressable, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, spacing, typography, shadows } from "./theme";
-import { useLocation } from "./contexts/locationContext";
+import { useLocation } from "../contexts/locationContext";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { useChallenge } from "./contexts/challengeContext";
-import { RunCalculationService } from "../src/services/runCalculationService";
-import { ChallengeService } from "../src/services/challengeService";
-import { NavigationService } from "../src/services/navigationService";
+import { useChallenge } from "../contexts/challengeContext";
+import { RunCalculationService } from "../services/runCalculationService";
+import { ChallengeService } from "../services/challengeService";
+import { NavigationService } from "../services/navigationService";
 import RecordMap from "../components/recordMap";
 import React from "react";
 
@@ -28,9 +28,9 @@ export default function RecordRun() {
     checkLocationServices,
     resetLocation,
   } = useLocation();
-  
+
   const isChallenge = !!challengeId;
-  
+
   const [coords, setCoords] = useState<
     { latitude: number; longitude: number; timestamp: number }[]
   >([]);
@@ -49,26 +49,31 @@ export default function RecordRun() {
   // Store location updates in coords when location changes
   useEffect(() => {
     if (location && watching) {
-      console.log('New location received:', location);
+      console.log("New location received:", location);
       setCoords((prev) => {
         // Avoid duplicate entries by checking if the new location is significantly different
         const lastCoord = prev[prev.length - 1];
-        if (!lastCoord || 
-            Math.abs(lastCoord.latitude - location.latitude) > 0.00005 ||
-            Math.abs(lastCoord.longitude - location.longitude) > 0.00005 ||
-            location.timestamp - lastCoord.timestamp > 2000) {
-          console.log('Adding new coordinate:', {
+        if (
+          !lastCoord ||
+          Math.abs(lastCoord.latitude - location.latitude) > 0.00005 ||
+          Math.abs(lastCoord.longitude - location.longitude) > 0.00005 ||
+          location.timestamp - lastCoord.timestamp > 2000
+        ) {
+          console.log("Adding new coordinate:", {
             latitude: location.latitude,
             longitude: location.longitude,
-            timestamp: location.timestamp
+            timestamp: location.timestamp,
           });
-          return [...prev, {
-            latitude: location.latitude,
-            longitude: location.longitude,
-            timestamp: location.timestamp
-          }];
+          return [
+            ...prev,
+            {
+              latitude: location.latitude,
+              longitude: location.longitude,
+              timestamp: location.timestamp,
+            },
+          ];
         }
-        console.log('Skipping duplicate/similar coordinate');
+        console.log("Skipping duplicate/similar coordinate");
         return prev;
       });
     }
@@ -85,53 +90,58 @@ export default function RecordRun() {
   }, []);
 
   const start = async () => {
-    console.log('Start button pressed');
+    console.log("Start button pressed");
     // Request permission if not granted
     if (locationPermission !== "granted") {
-      console.log('Requesting location permission');
+      console.log("Requesting location permission");
       const granted = await requestLocationPermission();
       if (!granted) {
-        console.log('Permission denied');
+        console.log("Permission denied");
         return;
       }
     }
-    
+
     // Check location services
-    console.log('Checking location services');
+    console.log("Checking location services");
     const servicesEnabled = await checkLocationServices();
     if (!servicesEnabled) {
-      console.log('Location services not enabled');
+      console.log("Location services not enabled");
       return;
     }
-    
-    console.log('Starting recording...');
-    
+
+    console.log("Starting recording...");
+
     // Reset location context to get fresh starting point
     resetLocation();
-    
+
     setCoords([]);
     const startedAt = Date.now();
-    console.log('Start time set to:', startedAt);
+    console.log("Start time set to:", startedAt);
     setStartTime(startedAt);
     setNow(startedAt);
     setWatching(true);
 
     // Start ticking timer for live elapsed seconds
     if (timerRef.current) {
-      console.log('Clearing existing timer');
+      console.log("Clearing existing timer");
       clearInterval(timerRef.current as any);
     }
-    console.log('Starting new timer');
+    console.log("Starting new timer");
     timerRef.current = setInterval(() => {
       const currentTime = Date.now();
-      console.log('Timer tick - current time:', currentTime, 'elapsed:', Math.floor((currentTime - startedAt) / 1000));
+      console.log(
+        "Timer tick - current time:",
+        currentTime,
+        "elapsed:",
+        Math.floor((currentTime - startedAt) / 1000),
+      );
       setNow(currentTime);
     }, 1000) as any;
 
     // Start location updates using the context
-    console.log('Calling startLocationUpdates...');
+    console.log("Calling startLocationUpdates...");
     await startLocationUpdates();
-    console.log('startLocationUpdates completed');
+    console.log("startLocationUpdates completed");
   };
 
   const stop = () => {
@@ -141,10 +151,13 @@ export default function RecordRun() {
       timerRef.current = null;
     }
     setWatching(false);
-    
+
     // Prepare run completion data using service
-    const runMetrics = RunCalculationService.calculateRunMetrics(coords, elapsedSec);
-    
+    const runMetrics = RunCalculationService.calculateRunMetrics(
+      coords,
+      elapsedSec,
+    );
+
     setCompletedRunData({
       coords,
       duration: runMetrics.duration,
@@ -155,31 +168,34 @@ export default function RecordRun() {
   };
 
   const elapsedSec = startTime ? Math.floor((now - startTime) / 1000) : 0;
-  
+
   // Get permission status as string for display
   const permissionStatus = locationPermission || "undetermined";
   const currentCoord = coords.length > 0 ? coords[coords.length - 1] : null;
 
   const handleSubmitRun = () => {
     if (!completedRunData) return;
-    
-    console.log('Submitting run:', completedRunData);
-    
+
+    console.log("Submitting run:", completedRunData);
+
     // If this is a challenge run, update the challenge status
     if (isChallenge && challengeId) {
-      const challengeRunData = ChallengeService.createRunData(coords, elapsedSec);
+      const challengeRunData = ChallengeService.createRunData(
+        coords,
+        elapsedSec,
+      );
       completeChallengeRun(challengeId, {
         ...challengeRunData,
         completedAt: new Date(),
       });
-      
+
       // Use navigation service with run data
       NavigationService.handleChallengeCompletion(
-        router, 
-        challengeId, 
-        completedRunData.duration, 
-        completedRunData.distance, 
-        completedRunData.pace
+        router,
+        challengeId,
+        completedRunData.duration,
+        completedRunData.distance,
+        completedRunData.pace,
       );
     } else {
       // Use navigation service for regular runs with run data
@@ -187,7 +203,7 @@ export default function RecordRun() {
         router,
         completedRunData.duration,
         completedRunData.distance,
-        completedRunData.pace
+        completedRunData.pace,
       );
     }
   };
@@ -202,15 +218,18 @@ export default function RecordRun() {
 
   if (runCompleted && completedRunData) {
     return (
-      <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
+      <SafeAreaView
+        style={styles.container}
+        edges={["left", "right", "bottom"]}
+      >
         <Text style={styles.completionTitle}>Run Complete!</Text>
         <Text style={styles.completionSubtitle}>Great job on your run</Text>
 
         {/* Map Section - showing the completed route */}
         <View style={styles.mapContainer}>
-          <RecordMap 
-            coords={completedRunData.coords} 
-            watching={false} 
+          <RecordMap
+            coords={completedRunData.coords}
+            watching={false}
             style={styles.map}
           />
         </View>
@@ -218,10 +237,14 @@ export default function RecordRun() {
         {/* Run Summary Stats */}
         <View style={styles.summaryContainer}>
           <Text style={styles.summaryTitle}>Run Summary</Text>
-          
+
           <View style={styles.statsGrid}>
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>{RunCalculationService.formatDuration(completedRunData.duration)}</Text>
+              <Text style={styles.statValue}>
+                {RunCalculationService.formatDuration(
+                  completedRunData.duration,
+                )}
+              </Text>
               <Text style={styles.statLabel}>Duration</Text>
             </View>
             <View style={styles.statItem}>
@@ -229,7 +252,11 @@ export default function RecordRun() {
               <Text style={styles.statLabel}>Pace/km</Text>
             </View>
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>{RunCalculationService.formatDistance(completedRunData.distance)}</Text>
+              <Text style={styles.statValue}>
+                {RunCalculationService.formatDistance(
+                  completedRunData.distance,
+                )}
+              </Text>
               <Text style={styles.statLabel}>Distance</Text>
             </View>
           </View>
@@ -258,7 +285,9 @@ export default function RecordRun() {
             onPress={handleResetRun}
           >
             <Ionicons name="refresh" size={24} color={colors.text} />
-            <Text style={[styles.actionButtonText, styles.resetButtonText]}>Start New Run</Text>
+            <Text style={[styles.actionButtonText, styles.resetButtonText]}>
+              Start New Run
+            </Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -268,7 +297,7 @@ export default function RecordRun() {
   return (
     <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
       <Text style={styles.title}>Record Run</Text>
-      
+
       {error && (
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>{error}</Text>
@@ -277,11 +306,7 @@ export default function RecordRun() {
 
       {/* Map Section - takes up most of the screen */}
       <View style={styles.mapContainer}>
-        <RecordMap 
-          coords={coords} 
-          watching={watching} 
-          style={styles.map}
-        />
+        <RecordMap coords={coords} watching={watching} style={styles.map} />
       </View>
 
       {/* Control Section */}
@@ -310,7 +335,7 @@ export default function RecordRun() {
                 ? "Loading..."
                 : "Start Recording"}
         </Text>
-        
+
         {/* Stats Section - below the button */}
         <View style={styles.primaryStats}>
           <View style={styles.primaryStatItem}>
@@ -319,13 +344,17 @@ export default function RecordRun() {
           </View>
           <View style={styles.primaryStatItem}>
             <Text style={styles.primaryStatValue}>
-              {coords.length > 1 ? RunCalculationService.calculatePace(coords) : "--:--"}
+              {coords.length > 1
+                ? RunCalculationService.calculatePace(coords)
+                : "--:--"}
             </Text>
             <Text style={styles.primaryStatLabel}>Pace/km</Text>
           </View>
           <View style={styles.primaryStatItem}>
             <Text style={styles.primaryStatValue}>
-              {coords.length > 1 ? `${RunCalculationService.calculateDistance(coords).toFixed(0)}m` : "0m"}
+              {coords.length > 1
+                ? `${RunCalculationService.calculateDistance(coords).toFixed(0)}m`
+                : "0m"}
             </Text>
             <Text style={styles.primaryStatLabel}>Distance</Text>
           </View>
@@ -340,8 +369,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  title: { 
-    ...typography.title, 
+  title: {
+    ...typography.title,
     marginBottom: spacing.md,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
@@ -354,7 +383,7 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing.lg,
     marginBottom: spacing.md,
     borderRadius: 12,
-    overflow: 'hidden',
+    overflow: "hidden",
     ...shadows.button,
     shadowOpacity: 0.1,
     elevation: 4,
@@ -367,8 +396,8 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.lg,
   },
   primaryStats: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     backgroundColor: colors.surface,
     borderRadius: 0,
     padding: spacing.lg,
@@ -379,19 +408,19 @@ const styles = StyleSheet.create({
     minHeight: 80,
   },
   primaryStatItem: {
-    alignItems: 'center',
+    alignItems: "center",
     flex: 1,
   },
   primaryStatValue: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: colors.accentStrong,
   },
   primaryStatLabel: {
     fontSize: 12,
     color: colors.textMuted,
     marginTop: 4,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   secondaryStats: {
@@ -407,13 +436,13 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: "#e6e6ea",
   },
-  statLabel: { 
+  statLabel: {
     ...typography.meta,
     color: colors.textMuted,
   },
-  statValue: { 
+  statValuePrimary: {
     ...typography.body,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   mono: { fontFamily: "Menlo", fontSize: 11 },
   coordsList: {
@@ -424,7 +453,7 @@ const styles = StyleSheet.create({
   },
   coordsTitle: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.text,
     marginBottom: spacing.sm,
   },
@@ -454,7 +483,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: "#e6e6ea",
-    flexDirection: 'column',
+    flexDirection: "column",
   },
   circleButton: {
     width: 80,
@@ -485,14 +514,14 @@ const styles = StyleSheet.create({
   completionTitle: {
     ...typography.title,
     color: colors.text,
-    textAlign: 'center',
+    textAlign: "center",
     marginTop: spacing.lg,
     marginBottom: spacing.xs,
   },
   completionSubtitle: {
     ...typography.body,
     color: colors.textMuted,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: spacing.lg,
   },
   summaryContainer: {
@@ -507,22 +536,22 @@ const styles = StyleSheet.create({
   },
   summaryTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.text,
     marginBottom: spacing.md,
-    textAlign: 'center',
+    textAlign: "center",
   },
   statsGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
+    flexDirection: "row",
+    justifyContent: "space-around",
   },
   statItem: {
-    alignItems: 'center',
+    alignItems: "center",
     flex: 1,
   },
   statValue: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: colors.accentStrong,
     marginBottom: spacing.xs,
   },
@@ -532,9 +561,9 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: spacing.lg,
     paddingHorizontal: spacing.xl,
     borderRadius: 12,
@@ -553,8 +582,8 @@ const styles = StyleSheet.create({
   },
   actionButtonText: {
     fontSize: 16,
-    fontWeight: '600',
-    color: 'white',
+    fontWeight: "600",
+    color: "white",
   },
   resetButtonText: {
     color: colors.text,
