@@ -6,6 +6,14 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "racefi",
+    "linking": {
+      "prefixes": ["racefi://", "https://racefi.app"],
+      "config": {
+        "screens": {
+          "wallet-callback": "wallet-callback"
+        }
+      }
+    },
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {

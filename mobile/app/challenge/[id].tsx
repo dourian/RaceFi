@@ -31,6 +31,7 @@ import { RunCalculationService } from "../../services/runCalculationService";
 import LeaderboardService from "../../services/leaderboardService";
 import StaticRoutePreview from "../../components/StaticRoutePreview";
 import { useAppTime, getCurrentAppTime } from "../../helpers/timeManager";
+import { StakingCard } from "../../components/StakingCard";
 
 export default function ChallengeDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -419,40 +420,24 @@ export default function ChallengeDetail() {
                 </CardContent>
               </Card>
             ) : (
-              <Card style={{ ...styles.cardSpacing, ...styles.joinCard }}>
-                <CardHeader title="Join Challenge" />
-                <CardContent>
-                  <View style={styles.stakeInfo}>
-                    <Text style={styles.stakeAmount}>
-                      {challenge.stake} USDC
-                    </Text>
-                    <Text style={styles.stakeLabel}>Stake to join</Text>
-                  </View>
-                  <Pressable
-                    onPress={handleJoinChallenge}
-                    disabled={
-                      joining ||
-                      challenge.participants >= challenge.maxParticipants
+              <StakingCard
+                challengeId={Number(id)}
+                profileId={Number(currentProfileId)}
+                minimumStake={challenge.stake}
+                onStakeComplete={() => {
+                  // Refresh challenge data after staking
+                  const refreshChallenge = async () => {
+                    try {
+                      const refreshed = await ApiService.getChallengeById(id!);
+                      if (refreshed) setChallenge(refreshed);
+                      joinChallenge(id!);
+                    } catch (error) {
+                      console.error('Error refreshing challenge:', error);
                     }
-                    style={[
-                      styles.joinButton,
-                      (joining || challenge.participants >= challenge.maxParticipants) ? { opacity: 0.7 } : null,
-                    ]}
-                  >
-                    <Text style={styles.joinButtonText}>
-                      {challenge.participants >= challenge.maxParticipants
-                        ? "Challenge Full"
-                        : joining
-                          ? "Joining..."
-                          : "Stake & Join Challenge"}
-                    </Text>
-                  </Pressable>
-                  <Text style={styles.stakeDisclaimer}>
-                    Winner takes all! Complete the challenge with the best time
-                    to win the entire prize pool.
-                  </Text>
-                </CardContent>
-              </Card>
+                  };
+                  refreshChallenge();
+                }}
+              />
             )
           ) : isCashedOut ? (
             <Card style={{ ...styles.cardSpacing, ...styles.cashedOutCard }}>

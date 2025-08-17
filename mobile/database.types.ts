@@ -148,6 +148,7 @@ export type Database = {
           last_name: string | null;
           updated_at: string | null;
           user_id: string | null;
+          wallet_address: string | null;
         };
         Insert: {
           avatar_url?: string | null;
@@ -158,6 +159,7 @@ export type Database = {
           last_name?: string | null;
           updated_at?: string | null;
           user_id?: string | null;
+          wallet_address?: string | null;
         };
         Update: {
           avatar_url?: string | null;
@@ -168,6 +170,7 @@ export type Database = {
           last_name?: string | null;
           updated_at?: string | null;
           user_id?: string | null;
+          wallet_address?: string | null;
         };
         Relationships: [];
       };

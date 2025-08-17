@@ -5,7 +5,19 @@ import { SignIn } from './SignIn';
 import { SignUp } from './SignUp';
 
 const AuthWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, loading } = useAuth();
+  // Add error boundary for auth context
+  let user, loading;
+  try {
+    const authContext = useAuth();
+    user = authContext.user;
+    loading = authContext.loading;
+  } catch (error) {
+    console.error('AuthWrapper: useAuth context error:', error);
+    // Fallback: assume not authenticated and not loading
+    user = null;
+    loading = false;
+  }
+  
   const [showSignUp, setShowSignUp] = useState(false);
 
   if (loading) {

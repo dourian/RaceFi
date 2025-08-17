@@ -11,6 +11,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../contexts/authContext";
 import { colors, shadows, spacing, typography } from "../../app/theme";
 import WalletBalance from "../WalletBalance";
+import { WalletConnectionButton } from "../WalletConnectionButton";
+import { WalletDemo } from "../WalletDemo";
 
 const Profile: React.FC = () => {
   const { user, signOut } = useAuth();
@@ -48,6 +50,14 @@ const Profile: React.FC = () => {
 
         {/* Wallet Balance */}
         <WalletBalance style={styles.walletBalance} />
+
+        {/* Wallet Connection */}
+        <WalletConnectionButton style={styles.walletConnection} />
+
+        {/* Wallet Demo - Only show when wallet is connected */}
+        <View style={styles.walletDemoContainer}>
+          <WalletDemo />
+        </View>
 
         {/* User Info */}
         <View style={styles.userInfo}>
@@ -173,6 +183,12 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
   },
   walletBalance: {
+    marginBottom: spacing.lg,
+  },
+  walletConnection: {
+    marginBottom: spacing.lg,
+  },
+  walletDemoContainer: {
     marginBottom: spacing.lg,
   },
   userInfo: {

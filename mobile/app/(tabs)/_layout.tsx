@@ -7,8 +7,8 @@ import { colors, shadows, spacing } from "../theme";
 
 export default function TabsLayout() {
   return (
-    <LocationProvider>
-      <AuthWrapper>
+    <AuthWrapper>
+      <LocationProvider>
         <View style={{ flex: 1, width: "100%", height: "100%" }}>
         <Tabs
           initialRouteName="index"
@@ -74,7 +74,7 @@ export default function TabsLayout() {
             />
           </Tabs>
         </View>
-      </AuthWrapper>
-    </LocationProvider>
+      </LocationProvider>
+    </AuthWrapper>
   );
 }
