@@ -18,6 +18,8 @@ import { useLocation } from "../contexts/locationContext";
 import { ChallengeService } from "../services/challengeService";
 import { NavigationService } from "../services/navigationService";
 import { RunCalculationService } from "../services/runCalculationService";
+import { ApiService } from "../services/apiService";
+import { decodePolyline } from "../helpers/polyline";
 
 export default function RecordRun() {
   const router = useRouter();
@@ -57,8 +59,39 @@ export default function RecordRun() {
     maxSpeedKmh?: number;
   } | null>(null);
   const [recenterKey, setRecenterKey] = useState(0);
+  const [staticPolyline, setStaticPolyline] = useState<
+    { latitude: number; longitude: number }[] | null
+  >(null);
   const mapTranslateY = useRef(new Animated.Value(0)).current;
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Fetch track polyline for challenge when challengeId is available
+  useEffect(() => {
+    const fetchTrackPolyline = async () => {
+      if (challengeId && isChallenge) {
+        try {
+          const encodedPolyline = await ApiService.getTrackPolyline(
+            parseInt(challengeId, 10),
+          );
+          if (encodedPolyline) {
+            const decodedCoords = decodePolyline(encodedPolyline);
+            setStaticPolyline(decodedCoords);
+            console.log("Static polyline loaded:", decodedCoords.length, "points");
+          } else {
+            setStaticPolyline(null);
+            console.log("No polyline found for challenge:", challengeId);
+          }
+        } catch (error) {
+          console.error("Error fetching track polyline:", error);
+          setStaticPolyline(null);
+        }
+      } else {
+        setStaticPolyline(null);
+      }
+    };
+
+    fetchTrackPolyline();
+  }, [challengeId, isChallenge]);
 
   // Store location updates in coords when location changes
   useEffect(() => {
@@ -317,6 +350,7 @@ export default function RecordRun() {
           coords={coords}
           watching={watching}
           recenterToRouteTrigger={recenterKey}
+          staticPolyline={staticPolyline || []}
         />
       </Animated.View>
 

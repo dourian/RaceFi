@@ -6,19 +6,19 @@ export default function RecordRunMap({
   coords,
   watching,
   recenterToRouteTrigger,
+  staticPolyline,
 }: {
   coords: { latitude: number; longitude: number; timestamp: number }[];
   watching: boolean;
   recenterToRouteTrigger?: number;
+  staticPolyline: { latitude: number; longitude: number }[];
 }) {
   const movingPolyline = coords.map((coord) => ({
     latitude: coord.latitude,
     longitude: coord.longitude,
   }));
 
-  const mockPolyline = decodePolyline("eo{bFzqzgV?L@L?J?L@JAL?N?L?JAL?L");
-
-  const arrowMarkers = buildArrowMarkers(mockPolyline);
+  const arrowMarkers = buildArrowMarkers(staticPolyline);
 
   return (
     <Map
@@ -26,7 +26,7 @@ export default function RecordRunMap({
       followsUserLocation={watching}
       alterMapEnabled={true}
       movingPolyline={movingPolyline}
-      staticPolyline={mockPolyline}
+      staticPolyline={staticPolyline}
       arrowMarkers={arrowMarkers}
       recenterToRouteTrigger={recenterToRouteTrigger}
     />
