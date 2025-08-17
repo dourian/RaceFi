@@ -12,6 +12,7 @@ import { useAuth } from "../../contexts/authContext";
 import { colors, shadows, spacing, typography } from "../../app/theme";
 import WalletBalance from "../WalletBalance";
 import TokenBalances from "./TokenBalances";
+import WalletAddressInput from "../WalletAddressInput";
 
 const Profile: React.FC = () => {
   const { user, signOut } = useAuth();
@@ -52,6 +53,13 @@ const Profile: React.FC = () => {
 
             {/* Token Balances (CDP) */}
             <TokenBalances />
+
+            {/* Wallet address (local) */}
+            <View style={styles.userInfo}>
+              <Text style={styles.sectionTitle}>Wallet</Text>
+              <Text style={styles.sectionSubtitle}>Used for staking and verification</Text>
+              <WalletAddressInput />
+            </View>
 
             {/* User Info */}
             <View style={styles.userInfo}>
@@ -190,6 +198,16 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: spacing.xl,
     ...shadows.card,
+  },
+  sectionTitle: {
+    ...typography.title,
+    fontSize: 18,
+    marginBottom: spacing.xs,
+  },
+  sectionSubtitle: {
+    ...typography.meta,
+    color: colors.textMuted,
+    marginBottom: spacing.sm,
   },
   nameInput: {
     borderWidth: 1.5,

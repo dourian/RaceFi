@@ -1,3 +1,5 @@
 node_modules/
 mobile/.DS_Store
 .vercel
+contracts/.env
+/contracts/node_modules

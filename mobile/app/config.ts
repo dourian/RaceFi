@@ -24,9 +24,16 @@ const API_URL_ENV =
   DEFAULT_API_URL;
 
 // Separate token backend URL (optional); falls back to API_URL
+// Default to a different port locally where the token backend runs
+const DEFAULT_TOKEN_API_URL = (() => {
+  if (Platform.OS === "android") return "http://10.0.2.2:8002";
+  return "http://localhost:8002";
+})();
+
 const TOKEN_API_URL_ENV =
   (process.env.EXPO_PUBLIC_TOKEN_API_URL as string | undefined) ||
   (extra.EXPO_PUBLIC_TOKEN_API_URL as string | undefined) ||
+  DEFAULT_TOKEN_API_URL ||
   API_URL_ENV;
 
 // Onramp configuration (public app-safe values)
@@ -48,7 +55,9 @@ export const ONRAMP_CONFIG = {
     (extra.EXPO_PUBLIC_ONRAMP_REDIRECT_URL as string | undefined) ||
     "racefi://success",
   DEFAULT_DESTINATION:
-    (process.env.EXPO_PUBLIC_ONRAMP_DESTINATION_ADDRESS as string | undefined) ||
+    (process.env.EXPO_PUBLIC_ONRAMP_DESTINATION_ADDRESS as
+      | string
+      | undefined) ||
     (extra.EXPO_PUBLIC_ONRAMP_DESTINATION_ADDRESS as string | undefined) ||
     "",
 };

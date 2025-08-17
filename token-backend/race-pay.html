@@ -1,0 +1,211 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>RaceFi Testnet Stake Payment</title>
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin: 24px; }
+      .card { max-width: 760px; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+      button { padding: 10px 14px; border-radius: 8px; border: 1px solid #d1d5db; background: #111827; color: white; cursor: pointer; }
+      button.secondary { background: white; color: #111827; }
+      .row { margin: 12px 0; }
+      code { background: #f3f4f6; padding: 2px 6px; border-radius: 6px; }
+      .muted { color: #6b7280; }
+      .ok { color: #065f46; }
+      .err { color: #991b1b; }
+      input[readonly] { width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 8px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+      a { color: #2563eb; text-decoration: none; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h2>RaceFi – Pay Stake on Base Sepolia</h2>
+      <p class="muted">This page will ask your wallet (Base/Coinbase Wallet extension) to send 0.001 ETH to the RaceEscrow with raceId=0.</p>
+
+      <div class="row">
+        <div><strong>Network:</strong> Base Sepolia (chainId 84532)</div>
+        <div><strong>Escrow:</strong> <code id="escrow">0xF1DA3B1e024b15Df6CbD5Ebb95Bb23bCcF0800a0</code></div>
+        <div><strong>raceId:</strong> <code id="raceId">0</code></div>
+        <div><strong>Amount:</strong> <code id="amount">0.001 ETH</code> (<span class="muted">1,000,000,000,000,000 wei</span>)</div>
+      </div>
+
+      <div class="row">
+        <button id="btn-connect" class="secondary">Connect Wallet</button>
+      </div>
+
+      <div class="row">
+        <button id="btn-contract">Pay via contract function (depositToRace)</button>
+        <button id="btn-raw" class="secondary">Pay via raw tx (to + value + data)</button>
+      </div>
+
+      <div class="row">
+        <details>
+          <summary>Show ABI-encoded data for raceId=0 (for manual sends)</summary>
+          <div class="row">
+            <div class="muted">Paste this into a wallet “Data / Hex data” field if you send manually:</div>
+            <input id="encoded" readonly value="0x0000000000000000000000000000000000000000000000000000000000000000" />
+          </div>
+        </details>
+      </div>
+
+      <div class="row" id="status" class="muted"></div>
+    </div>
+
+    <!-- Ethers v6 UMD to expose window.ethers -->
+    <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js"></script>
+    <script type="module">
+      const { ethers } = window;
+
+      // ---- Config (as requested) ----
+      const RACE_ESCROW = "0xF1DA3B1e024b15Df6CbD5Ebb95Bb23bCcF0800a0";
+      const RACE_ID = 0n;
+      const STAKE_WEI = 1_000_000_000_000_000n; // 0.001 ETH
+
+      const BASE_SEPOLIA = {
+        chainId: "0x14A34", // 84532
+        params: {
+          chainId: "0x14A34",
+          chainName: "Base Sepolia",
+          nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+          rpcUrls: ["https://sepolia.base.org"],
+          blockExplorerUrls: ["https://sepolia.basescan.org"],
+        }
+      };
+
+      const statusEl = document.getElementById("status");
+
+      function setStatus(html, cls = "muted") {
+        statusEl.className = cls;
+        statusEl.innerHTML = html;
+      }
+
+      // Select the best injected provider. Prefer Coinbase Wallet, fallback to MetaMask, then first provider.
+      function pickInjectedProvider() {
+        const eth = window.ethereum;
+        if (!eth) return null;
+        if (Array.isArray(eth.providers) && eth.providers.length) {
+          const coinbase = eth.providers.find(p => p && p.isCoinbaseWallet);
+          if (coinbase) return coinbase;
+          const metamask = eth.providers.find(p => p && p.isMetaMask);
+          if (metamask) return metamask;
+          return eth.providers[0];
+        }
+        // Some wallets expose window.coinbaseWalletExtension
+        if (window.coinbaseWalletExtension?.ethereum) return window.coinbaseWalletExtension.ethereum;
+        return eth;
+      }
+
+      let eth = null; // selected provider
+
+      function ensureEthereum() {
+        if (!eth) {
+          throw new Error("No wallet found. Please install/enable Coinbase Wallet or another EIP-1193 wallet.");
+        }
+        if (typeof eth.request !== "function") {
+          throw new Error("Wallet provider does not support .request. Please use a recent wallet extension.");
+        }
+      }
+
+      async function ensureChain() {
+        await eth.request({ method: "wallet_switchEthereumChain", params: [{ chainId: BASE_SEPOLIA.chainId }] })
+          .catch(async (e) => {
+            if (e && (e.code === 4902 || e.message?.includes("Unrecognized chain ID"))) {
+              await eth.request({ method: "wallet_addEthereumChain", params: [BASE_SEPOLIA.params] });
+            } else {
+              throw e;
+            }
+          });
+      }
+
+      async function getAccount() {
+        const accounts = await eth.request({ method: "eth_requestAccounts" });
+        if (!accounts || !accounts.length) throw new Error("No account authorized.");
+        return accounts[0];
+      }
+
+      function toHexWei(bi) {
+        return "0x" + bi.toString(16);
+      }
+
+      function encodeRaceId(id) {
+        return ethers.AbiCoder.defaultAbiCoder().encode(["uint256"], [id]);
+      }
+
+      async function sendRawWithData() {
+        ensureEthereum();
+        await ensureChain();
+        const from = await getAccount();
+        const data = encodeRaceId(RACE_ID);
+        const txReq = { from, to: RACE_ESCROW, value: toHexWei(STAKE_WEI), data };
+        const hash = await eth.request({ method: "eth_sendTransaction", params: [txReq] });
+        return hash;
+      }
+
+      async function callDepositFunction() {
+        ensureEthereum();
+        await ensureChain();
+        const provider = new ethers.BrowserProvider(eth);
+        const signer = await provider.getSigner();
+        const abi = ["function depositToRace(uint256 raceId) external payable"];
+        const contract = new ethers.Contract(RACE_ESCROW, abi, signer);
+        const tx = await contract.depositToRace(RACE_ID, { value: STAKE_WEI });
+        return tx.hash ?? tx;
+      }
+
+      function linkTx(hash) {
+        const url = `https://sepolia.basescan.org/tx/${hash}`;
+        return `<a href="${url}" target="_blank" rel="noreferrer">${hash}</a>`;
+      }
+
+      // Button handlers
+      document.getElementById("btn-raw").addEventListener("click", async () => {
+        setStatus("Submitting raw transaction…");
+        try {
+          const hash = await sendRawWithData();
+          setStatus(`Submitted (raw): ${linkTx(hash)}`, "ok");
+        } catch (e) {
+          console.error(e);
+          setStatus(`Error (raw): <code>${(e?.message || e)}</code>`, "err");
+        }
+      });
+
+      document.getElementById("btn-contract").addEventListener("click", async () => {
+        setStatus("Submitting contract call…");
+        try {
+          const hash = await callDepositFunction();
+          setStatus(`Submitted (depositToRace): ${linkTx(hash)}`, "ok");
+        } catch (e) {
+          console.error(e);
+          setStatus(`Error (contract): <code>${(e?.message || e)}</code>`, "err");
+        }
+      });
+
+      document.getElementById("btn-connect").addEventListener("click", async () => {
+        try {
+          if (!eth) eth = pickInjectedProvider();
+          ensureEthereum();
+          const acct = await getAccount();
+          setStatus(`Connected: <code>${acct}</code>`, "ok");
+        } catch (e) {
+          console.error(e);
+          setStatus(`Connect error: <code>${(e?.message || e)}</code>`, "err");
+        }
+      });
+
+      // Pre-fill encoded data for raceId=0 in case user wants to copy manually
+      document.getElementById("encoded").value = encodeRaceId(RACE_ID);
+
+      // On load, pick provider and show status hint
+      (function init() {
+        eth = pickInjectedProvider();
+        if (eth) {
+          setStatus("Wallet detected. Click Connect to proceed.", "ok");
+        } else {
+          setStatus("No wallet detected. Install/enable Coinbase Wallet, then reload.", "err");
+        }
+      })();
+    </script>
+  </body>
+</html>
+
