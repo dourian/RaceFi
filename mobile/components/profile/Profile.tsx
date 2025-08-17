@@ -11,13 +11,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../contexts/authContext";
 import { colors, shadows, spacing, typography } from "../../app/theme";
 import WalletBalance from "../WalletBalance";
-import { useBalance } from "../../contexts/balanceContext";
-import { useChallenge } from "../../contexts/challengeContext";
 
 const Profile: React.FC = () => {
   const { user, signOut } = useAuth();
-  const { resetAllChallenges } = useChallenge();
-  const { resetBalance } = useBalance();
 
   const handleSignOut = async () => {
     Alert.alert("Sign Out", "Are you sure you want to sign out?", [
@@ -34,29 +30,6 @@ const Profile: React.FC = () => {
       },
     ]);
   };
-
-  const handleResetChallenges = () => {
-    Alert.alert(
-      "Reset All Challenges",
-      "This will reset all challenge statuses back to not-joined. This action cannot be undone.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Reset All",
-          style: "destructive",
-          onPress: () => {
-            resetAllChallenges();
-            resetBalance();
-            Alert.alert(
-              "Success",
-              "All challenge statuses and balance have been reset",
-            );
-          },
-        },
-      ],
-    );
-  };
-
 
   return (
     <SafeAreaView
@@ -91,14 +64,6 @@ const Profile: React.FC = () => {
               : "N/A"}
           </Text>
         </View>
-
-        {/* Settings */}
-        <TouchableOpacity
-          style={styles.resetButton}
-          onPress={handleResetChallenges}
-        >
-          <Text style={styles.resetButtonText}>Reset All Data</Text>
-        </TouchableOpacity>
 
         {/* Sign Out */}
         <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
@@ -388,18 +353,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.text,
     marginBottom: 10,
-  },
-  resetButton: {
-    backgroundColor: "#ff9500",
-    padding: 15,
-    borderRadius: 8,
-    alignItems: "center",
-    marginBottom: 15,
-  },
-  resetButtonText: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "600",
   },
   signOutButton: {
     flexDirection: "row",

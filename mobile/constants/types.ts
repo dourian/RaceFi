@@ -20,6 +20,7 @@ export type Challenge = {
   location: string;
   startDate: Date;
   endDate: Date;
+  creatorProfileId?: number | null; // numeric profiles.id of the creator
   creator: {
     name: string;
     avatar: any;

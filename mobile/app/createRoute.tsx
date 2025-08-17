@@ -40,31 +40,73 @@ export default function CreateRouteScreen() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
 
-  // Load existing route points if coming from challenge creation
+  // Load existing route points and set initial map region
   useEffect(() => {
-    if (params.existingPoints && typeof params.existingPoints === 'string') {
-      try {
-        const points = JSON.parse(params.existingPoints);
-        if (Array.isArray(points) && points.length > 0) {
-          setRoutePoints(points);
-          updateRouteDistance(points);
+    const initializeMap = async () => {
+      // First, try to load existing route points
+      if (params.existingPoints && typeof params.existingPoints === 'string') {
+        try {
+          const points = JSON.parse(params.existingPoints);
+          if (Array.isArray(points) && points.length > 0) {
+            setRoutePoints(points);
+            updateRouteDistance(points);
+            
+            // Center map on existing route
+            const bounds = getRouteBounds(points);
+            if (bounds) {
+              setRegion(bounds);
+              return; // Exit early if we have route data
+            }
+          }
+        } catch (error) {
+          console.error('Error parsing existing points:', error);
         }
-      } catch (error) {
-        console.error('Error parsing existing points:', error);
       }
-    }
+      
+      // If no route exists, center on user's current location
+      await getCurrentLocation();
+    };
+    
+    initializeMap();
   }, [params.existingPoints]);
+  
+  // Calculate bounds for existing route
+  const getRouteBounds = (points: RoutePoint[]) => {
+    if (points.length === 0) return null;
+    
+    let minLat = points[0].latitude;
+    let maxLat = points[0].latitude;
+    let minLng = points[0].longitude;
+    let maxLng = points[0].longitude;
+    
+    points.forEach(point => {
+      minLat = Math.min(minLat, point.latitude);
+      maxLat = Math.max(maxLat, point.latitude);
+      minLng = Math.min(minLng, point.longitude);
+      maxLng = Math.max(maxLng, point.longitude);
+    });
+    
+    const padding = 0.005; // Add some padding around the route
+    return {
+      latitude: (minLat + maxLat) / 2,
+      longitude: (minLng + maxLng) / 2,
+      latitudeDelta: Math.max(maxLat - minLat + padding, 0.01),
+      longitudeDelta: Math.max(maxLng - minLng + padding, 0.01),
+    };
+  };
 
   // Get user's current location
   const getCurrentLocation = useCallback(async () => {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert("Permission denied", "Location access is required to create routes");
+        console.log("Location permission denied, using default location");
         return;
       }
 
-      const location = await Location.getCurrentPositionAsync({});
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
       const newRegion = {
         latitude: location.coords.latitude,
         longitude: location.coords.longitude,
@@ -75,6 +117,7 @@ export default function CreateRouteScreen() {
       mapRef.current?.animateToRegion(newRegion, 1000);
     } catch (error) {
       console.error("Error getting location:", error);
+      // Keep default region if location fails
     }
   }, []);
 
