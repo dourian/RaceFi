@@ -1,6 +1,4 @@
-import { buildArrowMarkers, decodePolyline } from "../helpers/polyline";
 import Map from "./map";
-import polyline from "@mapbox/polyline";
 
 export default function RecordRunMap({
   coords,
@@ -16,18 +14,12 @@ export default function RecordRunMap({
     longitude: coord.longitude,
   }));
 
-  const mockPolyline = decodePolyline("eo{bFzqzgV?L@L?J?L@JAL?N?L?JAL?L");
-
-  const arrowMarkers = buildArrowMarkers(mockPolyline);
-
   return (
     <Map
       showsUserLocation={true}
       followsUserLocation={watching}
       alterMapEnabled={true}
       movingPolyline={movingPolyline}
-      staticPolyline={mockPolyline}
-      arrowMarkers={arrowMarkers}
       recenterToRouteTrigger={recenterToRouteTrigger}
     />
   );

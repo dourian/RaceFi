@@ -361,6 +361,51 @@ export class ApiService {
     if (error) throw error;
   }
 
+  // Current user helpers
+  static async getCurrentUserProfile(): Promise<Tables<"profiles"> | null> {
+    const { data: userData, error: userErr } = await supabase.auth.getUser();
+    if (userErr) throw userErr;
+    const email = userData.user?.email;
+    if (!email) return null;
+    const { data: profile, error: pErr } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("email", email)
+      .maybeSingle();
+    if (pErr) throw pErr;
+    return (profile as any) ?? null;
+  }
+
+  static async joinChallengeAsCurrentUser(
+    challengeId: number,
+    stakeAmount: number,
+  ): Promise<Tables<"challenge_attendees">> {
+    const profile = await ApiService.getCurrentUserProfile();
+    if (!profile?.id) {
+      throw new Error("Profile not found for current user");
+    }
+
+    // Check if already joined
+    const { data: existing, error: existErr } = await supabase
+      .from("challenge_attendees")
+      .select("*")
+      .eq("challenge_id", challengeId)
+      .eq("profile_id", profile.id as number)
+      .maybeSingle();
+    if (existErr) throw existErr;
+    if (existing) {
+      return existing as Tables<"challenge_attendees">;
+    }
+
+    const insert = {
+      challenge_id: challengeId,
+      profile_id: profile.id as number,
+      stake_amount: stakeAmount,
+      status: "joined" as any,
+    } as TablesInsert<"challenge_attendees">;
+    return await ApiService.addParticipant(insert);
+  }
+
   // Runs CRUD
   static async listRunsByChallenge(
     challengeId: number,

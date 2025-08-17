@@ -179,7 +179,9 @@ export default function ChallengeDetail() {
     ? challenge.endDate.getTime() < currentAppTime
     : false;
 
-  const handleJoinChallenge = () => {
+  const [joining, setJoining] = useState(false);
+
+  const handleJoinChallenge = async () => {
     if (isExpired) {
       Alert.alert(
         "Challenge Expired",
@@ -189,8 +191,32 @@ export default function ChallengeDetail() {
       return;
     }
 
-    if (id) {
+    if (!id || !challenge || joining) return;
+
+    try {
+      setJoining(true);
+      // Create attendee record in Supabase for the current user
+      await ApiService.joinChallengeAsCurrentUser(Number(id), challenge.stake);
+      // Update local state
       joinChallenge(id);
+      // Refresh challenge from API to reflect new participants list/count
+      const refreshed = await ApiService.getChallengeById(id);
+      if (refreshed) setChallenge(refreshed);
+      Alert.alert("Joined", "You have joined this challenge!");
+    } catch (e: any) {
+      const msg = String(e?.message || "");
+      if (msg.toLowerCase().includes("already") || msg.toLowerCase().includes("duplicate") ) {
+        // Treat as already joined
+        joinChallenge(id);
+        const refreshed = await ApiService.getChallengeById(id);
+        if (refreshed) setChallenge(refreshed);
+        Alert.alert("Already joined", "You are already a participant.");
+      } else {
+        console.error("Join failed", e);
+        Alert.alert("Join failed", msg || "Unable to join challenge");
+      }
+    } finally {
+      setJoining(false);
     }
   };
 
@@ -378,10 +404,14 @@ export default function ChallengeDetail() {
                   </View>
                   <Pressable
                     onPress={handleJoinChallenge}
-                    style={styles.joinButton}
+                    disabled={joining}
+                    style={[
+                      styles.joinButton,
+                      joining ? { opacity: 0.7 } : null,
+                    ]}
                   >
                     <Text style={styles.joinButtonText}>
-                      Stake & Join Challenge
+                      {joining ? "Joining..." : "Stake & Join Challenge"}
                     </Text>
                   </Pressable>
                   <Text style={styles.stakeDisclaimer}>

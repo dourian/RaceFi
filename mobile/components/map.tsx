@@ -29,7 +29,6 @@ export default function Map({
   }>;
   recenterToRouteTrigger?: number;
 }) {
-  const [isGuest, setIsGuest] = useState(false);
   const { currentLocation, getCurrentLocation, locationPermission } =
     useLocation();
   const [mapRef, setMapRef] = useState<MapView | null>(null);
@@ -133,15 +132,10 @@ export default function Map({
     } catch {}
   }, [recenterToRouteTrigger, staticPolyline, mapRef, followsUserLocation]);
 
-  if (!isGuest && locationPermission !== "granted") {
+  if (locationPermission !== "granted") {
     return (
       <View style={styles.container}>
-        <TouchableOpacity
-          style={styles.guestButton}
-          onPress={() => setIsGuest(true)}
-        >
-          <Text style={styles.buttonText}>Continue as Guest</Text>
-        </TouchableOpacity>
+        <Text style={styles.buttonText}>Location permission is required to use the map.</Text>
       </View>
     );
   }
@@ -230,19 +224,8 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
   },
-  guestButton: {
-    backgroundColor: "#007AFF",
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 8,
-    elevation: 3,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-  },
   buttonText: {
-    color: "white",
+    color: "#333",
     fontSize: 16,
     fontWeight: "600",
   },

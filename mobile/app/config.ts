@@ -9,6 +9,10 @@ const SUPABASE_ANON_KEY =
   (process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY as string | undefined) ||
   (extra.EXPO_PUBLIC_SUPABASE_ANON_KEY as string | undefined);
 
+const API_URL_ENV =
+  (process.env.EXPO_PUBLIC_API_URL as string | undefined) ||
+  (extra.EXPO_PUBLIC_API_URL as string | undefined);
+
 // Supabase Configuration
 // These should be set via EAS environment variables or .env loaded via app.config.ts
 export const SUPABASE_CONFIG = {
@@ -16,7 +20,7 @@ export const SUPABASE_CONFIG = {
   anonKey: SUPABASE_ANON_KEY,
 };
 
-// You can also add other app configuration here
+// App configuration
 export const APP_CONFIG = {
   appName: "RaceFi",
   version: "1.0.0",
@@ -24,4 +28,4 @@ export const APP_CONFIG = {
 
 export default SUPABASE_CONFIG;
 
-export const API_URL = "http://127.0.0.1:8001";
+export const API_URL = API_URL_ENV || "";
