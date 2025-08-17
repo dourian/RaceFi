@@ -647,6 +647,8 @@ export default function CreateChallengeScreen() {
                       : formData.start_date
                   }
                   style={styles.datePicker}
+                  textColor={colors.text}
+                  accentColor={colors.accent}
                 />
               </View>
             </View>
@@ -675,7 +677,7 @@ const styles = StyleSheet.create({
   backButton: {
     padding: spacing.sm,
     borderRadius: 8,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.background,
   },
   titleContainer: {
     alignItems: "center",
