@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -17,8 +17,17 @@ import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { colors, spacing, typography, shadows } from "./theme";
 import { ApiService, ChallengeCreateRequest } from "../services/apiService";
+import RouteCreationPreview from "../components/RouteCreationPreview";
+import { RouteStorage } from "../utils/routeStorage";
+import { useFocusEffect } from "@react-navigation/native";
 
 export default function CreateChallengeScreen() {
+  interface RoutePoint {
+    latitude: number;
+    longitude: number;
+    id: string;
+  }
+
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -32,6 +41,29 @@ export default function CreateChallengeScreen() {
     end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
     polyline: "",
   });
+  const [routePoints, setRoutePoints] = useState<RoutePoint[]>([]);
+  const [routeDistance, setRouteDistance] = useState(0);
+
+  // Load saved route data when returning from route creation
+  useFocusEffect(
+    useCallback(() => {
+      const loadSavedRoute = async () => {
+        try {
+          const savedRoute = await RouteStorage.getTemporaryRoute();
+          if (savedRoute) {
+            setRoutePoints(savedRoute.points);
+            setRouteDistance(savedRoute.distance);
+            updateField('distance_km', savedRoute.distance.toFixed(2));
+            updateField('polyline', savedRoute.polyline);
+            console.log('Loaded saved route:', savedRoute);
+          }
+        } catch (error) {
+          console.error('Error loading saved route:', error);
+        }
+      };
+      loadSavedRoute();
+    }, [])
+  );
   const [loading, setLoading] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [datePickerMode, setDatePickerMode] = useState<"start" | "end">(
@@ -41,6 +73,79 @@ export default function CreateChallengeScreen() {
 
   const updateField = (field: keyof typeof formData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  // Calculate distance between two points using Haversine formula
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 6371; // Earth's radius in kilometers
+    const dLat = (lat2 - lat1) * (Math.PI / 180);
+    const dLon = (lon2 - lon1) * (Math.PI / 180);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
+
+  // Update route distance when points change
+  const updateRouteDistance = (points: RoutePoint[]) => {
+    if (points.length < 2) {
+      setRouteDistance(0);
+      return;
+    }
+
+    let totalDistance = 0;
+    for (let i = 1; i < points.length; i++) {
+      totalDistance += calculateDistance(
+        points[i - 1].latitude,
+        points[i - 1].longitude,
+        points[i].latitude,
+        points[i].longitude
+      );
+    }
+    setRouteDistance(totalDistance);
+    
+    // Auto-update distance field if route exists
+    if (totalDistance > 0) {
+      updateField('distance_km', totalDistance.toFixed(2));
+    }
+  };
+
+  // Handle route creation
+  const handleCreateRoute = () => {
+    router.push({
+      pathname: '/createRoute',
+      params: {
+        returnTo: 'createChallenge',
+        existingPoints: JSON.stringify(routePoints),
+      },
+    });
+  };
+
+  // Handle route editing
+  const handleEditRoute = () => {
+    handleCreateRoute();
+  };
+
+  // Handle route clearing
+  const handleClearRoute = () => {
+    Alert.alert(
+      "Clear Route",
+      "Are you sure you want to clear the current route?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Clear",
+          style: "destructive",
+          onPress: () => {
+            setRoutePoints([]);
+            setRouteDistance(0);
+            updateField('distance_km', '');
+            updateField('polyline', '');
+          },
+        },
+      ]
+    );
   };
 
   const openStartDatePicker = () => {
@@ -156,9 +261,9 @@ export default function CreateChallengeScreen() {
         start_date: formData.start_date.toISOString(),
         end_date: formData.end_date.toISOString(),
         created_by_profile_id: 1, // TODO: Get from auth context
-        polyline:
-          formData.polyline.trim() ||
-          "c~zbFfdtgVuHbBaFlGsApJrApJ`FlGtHbBtHcB`FmGrAqJsAqJaFmGuHcB", // Default Apple Park polyline
+        polyline: routePoints.length > 0 
+          ? RouteStorage.encodePolyline(routePoints)
+          : formData.polyline.trim() || "c~zbFfdtgVuHbBaFlGsApJrApJ`FlGtHbBtHcB`FmGrAqJsAqJaFmGuHcB", // Default Apple Park polyline
       };
 
       await ApiService.createChallenge(challengeData);
@@ -352,19 +457,19 @@ export default function CreateChallengeScreen() {
                   />
                 </View>
 
-                <View style={[styles.fieldGroup, styles.halfWidth]}>
-                  <Text style={styles.label}>Max Participants *</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={formData.max_participants}
-                    onChangeText={(value) => updateField("max_participants", value)}
-                    placeholder="20"
-                    placeholderTextColor={colors.textMuted}
-                    keyboardType="number-pad"
-                  />
-                </View>
               </View>
 
+              <View style={styles.fieldGroup}>
+                <Text style={styles.label}>Max Participants *</Text>
+                <TextInput
+                  style={styles.input}
+                  value={formData.max_participants}
+                  onChangeText={(value) => updateField("max_participants", value)}
+                  placeholder="20"
+                  placeholderTextColor={colors.textMuted}
+                  keyboardType="number-pad"
+                />
+              </View>
 
               <View style={styles.fieldGroup}>
                 <Text style={styles.label}>Location *</Text>
@@ -415,16 +520,14 @@ export default function CreateChallengeScreen() {
                 </View>
               </View>
 
+              {/* Route Creation Section */}
               <View style={styles.fieldGroup}>
-                <Text style={styles.label}>Route Polyline (Optional)</Text>
-                <TextInput
-                  style={[styles.input, styles.textArea]}
-                  value={formData.polyline}
-                  onChangeText={(value) => updateField("polyline", value)}
-                  placeholder="Encoded polyline string (leave empty for default route)"
-                  placeholderTextColor={colors.textMuted}
-                  multiline
-                  numberOfLines={2}
+                <Text style={styles.label}>Challenge Route</Text>
+                <RouteCreationPreview
+                  routePoints={routePoints}
+                  distance={routeDistance}
+                  onEdit={handleEditRoute}
+                  onClear={handleClearRoute}
                 />
               </View>
             </View>
